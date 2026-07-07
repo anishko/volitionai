@@ -33,8 +33,9 @@ Steady state (plan pricing + local routing): $0.02-0.05 per full run.
 We are not "cheaper than Claude" — we USE Claude where it earns its
 keep. The claim is: a general chatbot subscription ($20/mo) sends
 every token to a frontier model and gives you uncited, generic,
-memoryless output. Volition runs ~70% of tokens locally on open-weight
-models at $0 and routes synthesis to the cheapest capable cloud model
+memoryless output. Volition runs roughly half of tokens locally on
+open-weight models at $0 (the exact split is printed on every receipt)
+and routes synthesis to the cheapest capable cloud model
 by default (Haiku), producing cited, profile-specific, execution-ready
 output at an audited $0.03-0.13 per run. A heavy user doing 40 runs
 costs us under $5 in inference — the margin is structural because most

@@ -1,0 +1,161 @@
+{
+  "profile": {
+    "businessName": "Liberty Legal Aid",
+    "orgType": "nonprofit",
+    "industry": "government-accountability",
+    "city": "",
+    "state": "",
+    "audience": "donors and supporters in the liberty movement",
+    "goals": [
+      "Find issue-aligned conferences to sponsor",
+      "Convert donors at in-person events",
+      "Time our campaigns to legislative calendars"
+    ],
+    "voice": "urgent but factual",
+    "pastContentThemes": [
+      "child welfare",
+      "family reunification",
+      "eminent domain abuse",
+      "homeless defense",
+      "local government misconduct"
+    ]
+  },
+  "cards": [
+    {
+      "id": "card_mrb6fuir_7",
+      "lane": "comparable",
+      "idea": "Partner with established legal aid fundraisers like Legal Aid Chicago's Justice Is Served and The Legal Aid Society's Associates' Campaign to model donor conversion strategies at signature fall events.",
+      "whyItFitsYou": "Liberty Legal Aid can replicate proven legal-aid-sector fundraising models that directly engage donors at in-person events, aligning with your goal to convert donors at events while building credibility within the legal services community.",
+      "evidence": [
+        {
+          "claim": "Legal Aid Chicago's Justice Is Served is a signature fall fundraiser on October 9th, 2026 that brings together supporters, community leaders, and advocates",
+          "url": "https://legalaidchicago.org/get-involved/events/justice-is-served",
+          "sourceName": "Legal Aid Chicago Events"
+        },
+        {
+          "claim": "The Legal Aid Society runs an Associates' Campaign (April 1 - June 30, 2026) focused on fundraising from attorneys and donors",
+          "url": "https://secure.qgiv.com/event/2026associatescampaign",
+          "sourceName": "The Legal Aid Society 2026 Associates' Campaign"
+        }
+      ],
+      "comparables": [
+        {
+          "name": "Legal Aid Chicago",
+          "whyComparable": "Operates signature annual fundraiser designed to convert supporters and community leaders through in-person event strategy",
+          "notablePlays": [
+            "Justice Is Served fall fundraiser (October 9, 2026)",
+            "Brings together supporters, community leaders, and advocates"
+          ],
+          "url": "https://legalaidchicago.org/get-involved/events/justice-is-served"
+        },
+        {
+          "name": "The Legal Aid Society",
+          "whyComparable": "Runs attorney-focused fundraising campaign model proven to engage legal professionals as donors",
+          "notablePlays": [
+            "2026 Associates' Campaign (April-June 2026)",
+            "Multi-month fundraising campaign targeting legal professionals"
+          ],
+          "url": "https://secure.qgiv.com/event/2026associatescampaign"
+        }
+      ],
+      "executionSteps": [
+        "Audit Legal Aid Chicago's Justice Is Served event format (timing, sponsorship tiers, donor touchpoints) and request debrief on conversion metrics.",
+        "Study The Legal Aid Society's Associates' Campaign structure to identify replicable attorney-engagement mechanics for your donor base.",
+        "Design Liberty Legal Aid's signature fall event using proven legal-aid-sector benchmarks, with explicit sponsorship conversion milestones."
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "card_mrb6fuir_8",
+      "lane": "opportunity",
+      "idea": "Sponsor FOCUS 2026 at Atlas Network to position Liberty Legal Aid in front of 500+ freedom champions during keynotes, panels, and receptions aligned with your liberty movement audience.",
+      "whyItFitsYou": "FOCUS 2026 directly reaches your target donor and supporter audience within the liberty movement, enabling real-time conversion at a single high-leverage event matched to your government-accountability mission.",
+      "evidence": [
+        {
+          "claim": "FOCUS 2026 sponsorship opportunity puts organizations in front of 500+ freedom champions during keynotes, panels, receptions, and breakout sessions",
+          "url": "https://sponsor.atlasnetwork.org",
+          "sourceName": "Atlas Network Sponsorship Opportunities 2026"
+        }
+      ],
+      "executionSteps": [
+        "Verify FOCUS 2026 sponsorship package details and pricing via the Atlas Network portal.",
+        "Map Liberty Legal Aid messaging to FOCUS 2026 audience profile and session themes to maximize donor engagement.",
+        "Commit sponsorship by confirmed deadline and coordinate pre-event outreach to registered attendees for donor conversion strategy."
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "card_mrb6fuir_9",
+      "lane": "trend",
+      "idea": "Align Liberty Legal Aid's campaign calendar to the legal aid sector's established June-July fundraising cycle, as evidenced by Legal Aid DC's June 2026 Making Justice Real Campaign launch and LSC's July 2026 convening in Louisville.",
+      "whyItFitsYou": "Timing your campaigns to match sector-wide fundraising momentum and legislative/organizational cycles amplifies donor responsiveness and positions you within broader justice-access movements, directly supporting your goal to time campaigns to legislative calendars.",
+      "evidence": [
+        {
+          "claim": "Legal Aid DC launched the 2026 Making Justice Real Campaign on June 22, kicking off six weeks of fundraising from attorneys and law firms",
+          "url": "https://www.legalaiddc.org/blogs/legal-aid-launches-2026-making-justice-real-campaign",
+          "sourceName": "Legal Aid DC 2026 Making Justice Real Campaign"
+        },
+        {
+          "claim": "LSC Board of Directors Quarterly Meeting in Louisville, KY on July 19-20, 2026, includes Forum on Increasing Access to Justice & Justice in Action Reception",
+          "url": "https://www.lsc.gov/events",
+          "sourceName": "Legal Services Corporation Events"
+        }
+      ],
+      "executionSteps": [
+        "Schedule Liberty Legal Aid's campaign launch for late June 2026 to coincide with the sector's Making Justice Real momentum and maximize attorney/donor engagement.",
+        "Monitor LSC and regional legal aid conference calendars to identify legislative and funding cycle inflection points for strategic campaign timing.",
+        "Develop urgency-driven messaging that ties Liberty Legal Aid's government-accountability mission to sector-wide access-to-justice moments."
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "receipt": {
+    "runId": "run_mrb6ffc4_0uojex",
+    "totalUsd": 0.0567,
+    "byStage": [
+      {
+        "stage": "plan",
+        "provider": "ollama",
+        "usd": 0
+      },
+      {
+        "stage": "search",
+        "provider": "tavily",
+        "usd": 0.048
+      },
+      {
+        "stage": "rank",
+        "provider": "ollama",
+        "usd": 0
+      },
+      {
+        "stage": "synthesize",
+        "provider": "anthropic",
+        "usd": 0.008695
+      }
+    ],
+    "localTokenShare": 45
+  },
+  "meta": {
+    "runId": "run_mrb6ffc4_0uojex",
+    "queries": [
+      "Liberty Legal Aid comparable sponsors at liberty movement conferences 2026",
+      "Liberty Legal Aid opportunity to convert donors at in-person events 2026",
+      "Liberty Legal Aid trend in government accountability content 2026",
+      "Liberty Legal Aid legislative calendar alignment for donor campaigns 2026",
+      "Liberty Legal Aid event sponsorship strategies for liberty movement 2026",
+      "Liberty Legal Aid donor conversion tactics at in-person events 2026"
+    ],
+    "lanes": [
+      "comparable",
+      "opportunity",
+      "trend"
+    ],
+    "evidenceFetched": 30,
+    "evidenceRanked": 12,
+    "droppedForNoCitation": 0,
+    "cloudModel": "claude-haiku-4-5",
+    "notices": [],
+    "capturedAt": "2026-07-07T21:44:38.211Z"
+  }
+}

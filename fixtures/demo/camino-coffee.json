@@ -18,82 +18,89 @@
   },
   "cards": [
     {
-      "id": "card_mrb5jy2q_4",
+      "id": "card_mrb6fd7n_4",
       "lane": "trend",
-      "idea": "Post drink-making videos and aesthetic imagery on social media to align with current coffee shop content trends and increase engagement.",
-      "whyItFitsYou": "Camino Coffee's goal to enhance social media presence directly matches this trending format that coffee shops are using to build brand identity and connect with followers.",
+      "idea": "Create short-form video content showcasing drink-making, seasonal specials, and behind-the-scenes moments on Instagram and TikTok to build social proof and drive foot traffic.",
+      "whyItFitsYou": "Camino Coffee can leverage trending video content formats to enhance social media presence and attract both local community members and Las Vegas visitors seeking authentic, engaging brand experiences.",
       "evidence": [
         {
-          "claim": "Coffee shop social media trends include drink-making videos, funny and relatable content, and aesthetic imagery",
+          "claim": "Social media trends for coffee shops include drink-making videos, funny and relatable content, aesthetic imagery, and customized cups that significantly enhance brand awareness on social media",
           "url": "https://www.yourbrandcafe.com/blog/social-media-trends-for-coffee-shops",
-          "sourceName": "Your Brand Cafe - Social Media Trends For Coffee Shops"
-        }
-      ],
-      "executionSteps": [
-        "Create weekly drink-making videos showcasing signature Camino Coffee drinks",
-        "Post aesthetic imagery of your cafe atmosphere and coffee presentation",
-        "Schedule posts for afternoons, evenings, and weekends to maximize engagement"
-      ],
-      "confidence": "high"
-    },
-    {
-      "id": "card_mrb5jy2q_5",
-      "lane": "opportunity",
-      "idea": "Launch a social media giveaway campaign offering a prize worth visiting for, then convert followers into in-store customers through targeted calls-to-action.",
-      "whyItFitsYou": "This directly addresses both of Camino Coffee's goals—increasing foot traffic and enhancing social media presence—by growing your audience affordably and driving real visits.",
-      "evidence": [
-        {
-          "claim": "Hosting a giveaway for your coffee shop is a quick and effective way to grow your social audience and eventually convert them into real-life customers",
-          "url": "https://www.sumup.com/en-us/business-guide/social-media-coffee",
-          "sourceName": "SumUp - How to Run Your Coffee Shop's Social Media Accounts"
+          "sourceName": "Social Media Trends For Coffee Shops"
         },
         {
-          "claim": "Use calls to action—verbs and adverbs—to get followers to comment on your post, visit your shop",
-          "url": "https://www.espresso-services.com/espresso-blog/social-media-strategies-for-coffee-shop-and-restaurant-owners",
-          "sourceName": "Espresso Services - Social Media Strategies for Coffee Shop Owners"
+          "claim": "Use Instagram, TikTok, and micro-influencers to showcase seasonal drinks, behind-the-scenes moments, and customer stories that build social proof and brand affinity",
+          "url": "https://www.restolabs.com/blog/top-coffee-shop-marketing-ideas",
+          "sourceName": "17 Coffee Shop Marketing Ideas to Boost Sales in 2026"
         }
       ],
       "executionSteps": [
-        "Design a giveaway prize that reflects Camino Coffee's brand and appeals to your local audience",
-        "Promote the giveaway with clear calls-to-action directing winners to visit in-store",
-        "Track which new followers convert to repeat customers to measure ROI"
+        "Film 2-3 short videos per week featuring drink preparation, latte art, and seasonal menu items",
+        "Post consistently across Instagram Reels and TikTok using trending sounds and hashtags relevant to Las Vegas coffee culture",
+        "Encourage staff to share behind-the-scenes moments and customer interactions to build authentic community connection"
       ],
       "confidence": "high"
     },
     {
-      "id": "card_mrb5jy2q_6",
-      "lane": "comparable",
-      "idea": "Study how community-focused independent coffee shops build loyalty through in-store experiences and local partnerships, then apply similar tactics at Camino Coffee.",
-      "whyItFitsYou": "As an independent coffee shop in Las Vegas targeting local community visitors, learning from peers who've successfully positioned themselves as community hubs will directly support your foot traffic and brand goals.",
+      "id": "card_mrb6fd7n_5",
+      "lane": "opportunity",
+      "idea": "Establish a 'Business of the Day' partnership program with nearby Las Vegas businesses, offering their staff unlimited free coffee one day per month to generate word-of-mouth advertising and cross-customer traffic.",
+      "whyItFitsYou": "This low-cost local partnership strategy directly addresses Camino Coffee's goals to increase foot traffic while leveraging Las Vegas's dense downtown business community and building authentic relationships with neighboring organizations.",
       "evidence": [
         {
-          "claim": "Customers who walk into your local, independent coffee shop aren't just looking for a fresh cup of coffee—they also want a memorable experience",
-          "url": "https://freshcup.com/more-than-coffee-5-tips-on-building-community-in-your-coffee-shop",
-          "sourceName": "Fresh Cup - More Than Coffee: 5 Tips on Building Community In Your Coffee Shop"
+          "claim": "Offer to make a local business the 'Business of the Day,' where you provide their staff with unlimited free coffee for one day. It also generates word-of-mouth advertising—people love to talk about unique perks they've received, and this initiative can create a buzz in your local community.",
+          "url": "https://www.coffeemachinedepot.com/blogs/news/10-marketing-tips-for-your-coffee-shop-in-2024",
+          "sourceName": "10 Marketing Tips for your Coffee Shop in 2024"
+        },
+        {
+          "claim": "The most powerful, authentic, and cost-effective marketing lies in partnering with the other local businesses around you. When the boutique down the street recommends your coffee, it's a trusted endorsement from a fellow local.",
+          "url": "https://www.meedloyalty.com/post/the-power-of-local-partnerships-cross-promoting-your-coffee-shop",
+          "sourceName": "The Power of Local Partnerships: Cross-Promoting Your Coffee Shop"
+        }
+      ],
+      "executionSteps": [
+        "Identify and contact 5-10 neighboring Las Vegas businesses within walking distance to pitch the monthly partnership",
+        "Schedule first 'Business of the Day' and track foot traffic and new customer acquisition",
+        "Document and share the partner business's experience on social media to amplify word-of-mouth effect"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "card_mrb6fd7n_6",
+      "lane": "comparable",
+      "idea": "Study Mothership Coffee Roasters' community-focused business model and ethical sourcing approach to inform Camino Coffee's positioning as a locally-rooted, values-driven alternative to chains.",
+      "whyItFitsYou": "Mothership operates in Las Vegas's independent coffee ecosystem and has successfully built community identity through farm-to-table practices and passionate roasting, providing a proven comparable for how Camino Coffee can differentiate and strengthen local loyalty.",
+      "evidence": [
+        {
+          "claim": "Mothership Coffee Roasters was started in the heart of Sunrise Coffee, the longest running independent coffee shop in Las Vegas, by Juanny Romero and Josh Walter. Mothership Coffee Roasters has been the darling of the community with a focus on ethical farming, farm to table pastries and passionate pursuit of roasting the best coffee.",
+          "url": "https://www.sba.gov/success-story/mothership-serves-coffee-and-community",
+          "sourceName": "The Mothership Serves Coffee and Community | U.S. Small Business Administration"
         }
       ],
       "comparables": [
         {
-          "name": "Chemn Cafe",
-          "whyComparable": "Recognized as a community-focused coffee shop that brings people together and fosters local connections through shared experiences",
+          "name": "Mothership Coffee Roasters",
+          "whyComparable": "Established Las Vegas independent coffee shop that has built strong community reputation through ethical sourcing, farm-to-table practices, and passionate craft focus while operating as a growth-stage small business.",
           "notablePlays": [
-            "Building strong community connections",
-            "Serving as a gathering place for locals"
+            "Focus on ethical farming and fair-trade sourcing",
+            "Farm-to-table pastry partnerships",
+            "Community-centric brand identity that differentiates from chains",
+            "Scaled from startup to 50+ employees while maintaining independent identity"
           ],
-          "url": "https://chemncafe.com/blog/community-connections-how-coffee-shops-bring-people-together"
+          "url": "https://www.sba.gov/success-story/mothership-serves-coffee-and-community"
         }
       ],
       "executionSteps": [
-        "Host local events or workshops at Camino Coffee to encourage repeat visits",
-        "Partner with nearby businesses to cross-promote and expand your community presence",
-        "Document community moments on social media to reinforce your friendly, welcoming brand voice"
+        "Research and document Mothership's sourcing partners, pastry suppliers, and community engagement initiatives",
+        "Identify 2-3 ethical sourcing or local partnership opportunities aligned with Camino Coffee's values and audience",
+        "Develop and communicate Camino Coffee's unique community value proposition across social media and in-store messaging"
       ],
       "confidence": "medium"
     }
   ],
   "receipt": {
-    "runId": "run_mrb5jk3w_uj68hd",
-    "totalUsd": 0.0636,
+    "runId": "run_mrb6ez4x_aitijx",
+    "totalUsd": 0.0657,
     "byStage": [
       {
         "stage": "plan",
@@ -113,32 +120,32 @@
       {
         "stage": "synthesize",
         "provider": "anthropic",
-        "usd": 0.00763
+        "usd": 0.009653
       }
     ],
-    "localTokenShare": 54
+    "localTokenShare": 52
   },
   "meta": {
-    "runId": "run_mrb5jk3w_uj68hd",
+    "runId": "run_mrb6ez4x_aitijx",
     "queries": [
-      "comparable independent coffee shops in Las Vegas strategies to increase foot traffic",
-      "how do successful coffee shops in Las Vegas engage with local community and visitors",
-      "trending social media content for coffee shops in Las Vegas",
-      "opportunities for coffee shops in Las Vegas to partner with local influencers",
-      "best practices for enhancing social media presence for independent coffee shops",
-      "current trends in coffee shop marketing in Las Vegas",
-      "how to leverage local events for foot traffic in Las Vegas coffee shops"
+      "independent coffee shop strategies to increase foot traffic in Las Vegas 2026",
+      "social media tactics for coffee shops targeting tourists and locals in Las Vegas",
+      "upcoming events in Las Vegas that coffee shops can sponsor in 2026",
+      "successful coffee shop collaborations with local influencers in Las Vegas",
+      "trending content formats for coffee shops on Instagram and TikTok in 2026",
+      "ways to boost foot traffic through seasonal promotions in Las Vegas coffee shops",
+      "local Las Vegas community engagement strategies for independent coffee shops"
     ],
     "lanes": [
       "comparable",
-      "trend",
-      "opportunity"
+      "opportunity",
+      "trend"
     ],
     "evidenceFetched": 35,
     "evidenceRanked": 12,
     "droppedForNoCitation": 0,
     "cloudModel": "claude-haiku-4-5",
     "notices": [],
-    "capturedAt": "2026-07-07T21:19:49.826Z"
+    "capturedAt": "2026-07-07T21:44:15.779Z"
   }
 }

@@ -33,6 +33,12 @@ const PRESETS = [
     description:
       "We're Camino Coffee, an independent coffee shop in Las Vegas with 12 employees. We want more foot traffic and a stronger social media presence.",
   },
+  {
+    slug: "liberty-legal-aid",
+    label: "Liberty Legal Aid",
+    description:
+      "We're Liberty Legal Aid, a national government-accountability nonprofit. Our issue areas are child welfare and family reunification, eminent domain abuse, homeless defense, and local government misconduct. Our audience is donors and supporters in the liberty movement. We want to find issue-aligned conferences to sponsor, convert donors at in-person events, and time our campaigns to legislative calendars. Our voice is urgent but factual.",
+  },
 ];
 
 const PHASES = [

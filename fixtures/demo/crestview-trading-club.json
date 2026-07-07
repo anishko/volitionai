@@ -2,7 +2,7 @@
   "profile": {
     "businessName": "Crestview Trading Club",
     "orgType": "student organization",
-    "industry": "financial services",
+    "industry": "finance",
     "city": "",
     "state": "",
     "audience": "students",
@@ -16,104 +16,93 @@
   },
   "cards": [
     {
-      "id": "card_mrb5jikn_1",
+      "id": "card_mrb6exms_1",
       "lane": "comparable",
-      "idea": "Partner with established trading competition platforms like CME Group's University Trading Challenge to run a professionally-hosted fall competition that provides simulated trading access and legitimacy.",
-      "whyItFitsYou": "Crestview Trading Club needs a credible, turnkey competition model to execute its fall trading event while establishing sponsorship relationships with recognized industry players.",
+      "idea": "Model Crestview Trading Club after Traders at Berkeley, which hosts an annual intercollegiate trading competition and teaches quantitative finance skills to undergraduates.",
+      "whyItFitsYou": "Traders at Berkeley demonstrates how a student-run trading organization can build a premier competition, attract industry sponsorships, and grow membership through education and competition—directly aligning with Crestview's goals to run a fall trading competition and land sponsors.",
       "evidence": [
         {
-          "claim": "CME Group University Trading Challenge is a complimentary electronic trading competition that allows students to experience real-time trading with teams of undergraduate and graduate students trading CME Group products on a professional platform",
-          "url": "https://www.cmegroup.com/events/university-trading-challenge.html",
-          "sourceName": "CME Group"
+          "claim": "Traders at Berkeley hosts the annual Berkeley Trading Competition, teaches the Introduction to Quantitative Finance course, and connects students with the industry's leading trading and technology firms.",
+          "url": "https://traders.studentorg.berkeley.edu",
+          "sourceName": "Traders at Berkeley"
         }
       ],
       "comparables": [
         {
-          "name": "CME Group University Trading Challenge",
-          "whyComparable": "Offers a free, professionally-managed trading competition for college students with simulated platform and real-world asset classes",
+          "name": "Traders at Berkeley",
+          "whyComparable": "Peer student-run trading club that hosts an annual intercollegiate competition, offers quantitative finance education, and engages industry partners.",
           "notablePlays": [
-            "Complimentary electronic trading competition",
-            "Professional CQG trading platform access",
-            "Multiple asset classes available",
-            "Attracts sponsors from top financial firms"
+            "Hosts Berkeley Trading Competition annually (February–March)",
+            "Teaches Introduction to Quantitative Finance DeCal course open to all students",
+            "Connects students with leading trading and technology firms as sponsors"
           ],
-          "url": "https://www.cmegroup.com/events/university-trading-challenge.html"
-        },
-        {
-          "name": "K-State Investment Club Stock Market Competition",
-          "whyComparable": "Runs an annual departmentally-backed stock market competition open to all students from November to April",
-          "notablePlays": [
-            "Semester-long competition format",
-            "Departmental partnership model",
-            "Open to all student levels"
-          ],
-          "url": "https://cba.k-state.edu/success/student-organizations/investmentclub"
-        },
-        {
-          "name": "Flagler College Financial Investment Club",
-          "whyComparable": "Combines beginner-friendly mock trading competitions with guest speakers and plans for student-managed investment fund",
-          "notablePlays": [
-            "Mock trading competitions",
-            "Guest speaker programming",
-            "Hands-on experience with community impact focus"
-          ],
-          "url": "https://www.flagler.edu/news-events/news/saints-take-market-through-financial-investment-club"
+          "url": "https://traders.studentorg.berkeley.edu"
         }
       ],
       "executionSteps": [
-        "Contact CME Group's University Trading Challenge to register Crestview as an official participating team and secure competition dates",
-        "Leverage CME's Day of Market Education day to host guest speakers and build sponsor relationships",
-        "Promote the official CME platform affiliation in membership drives to demonstrate legitimacy and differentiate from other campus clubs"
+        "Study Traders at Berkeley's competition format (2-day event with trading and quantitative research challenges) and course curriculum to adapt for Crestview's fall timeline.",
+        "Identify potential sponsors from the trading and fintech firms that partner with Berkeley, and use their model as a case study in sponsorship outreach.",
+        "Launch a basic quantitative finance course or workshop series alongside the competition to build membership and demonstrate educational value to prospective sponsors."
       ],
       "confidence": "high"
     },
     {
-      "id": "card_mrb5jikn_2",
+      "id": "card_mrb6exms_2",
       "lane": "opportunity",
-      "idea": "Develop a tiered guest speaker series with finance professionals and fund managers to attract sponsors seeking talent pipeline access and differentiate membership value.",
-      "whyItFitsYou": "Crestview's stated goals include landing sponsors and growing membership; professional speakers create tangible member value while offering sponsors direct student audience access.",
+      "idea": "Register Crestview students for the Stevens High Frequency Trading Competition (HFTC-26) and use it as a recruitment and sponsorship platform.",
+      "whyItFitsYou": "HFTC-26 is open to all qualified undergraduates and graduate students worldwide, offering Crestview a prestigious competition to showcase members' skills while attracting sponsors impressed by student participation in a rigorous, industry-recognized event.",
       "evidence": [
         {
-          "claim": "The Investment Club provides opportunities for members to learn about investment management from business professionals through on-campus meetings and employer visits, with members attending the Berkshire Hathaway Annual Meeting",
-          "url": "https://cba.k-state.edu/success/student-organizations/investmentclub",
-          "sourceName": "K-State Investment Club"
+          "claim": "The School of Business at Stevens Institute of Technology is pleased to announce the annual Stevens High Frequency Trading Competition (HFTC-26)! This rigorous, high-stakes event is open to all qualified undergraduate and graduate students enrolled in an accredited university anywhere in the world.",
+          "url": "https://www.stevens.edu/school-business/2026-stevens-high-frequency-trading-competition",
+          "sourceName": "Stevens Institute of Technology"
         },
         {
-          "claim": "Flagler's Financial Investment Club combines beginner friendly discussions, mock trading competitions, and guest speakers to help students learn market strategies and develop confidence in financial decisions",
-          "url": "https://www.flagler.edu/news-events/news/saints-take-market-through-financial-investment-club",
-          "sourceName": "Flagler College"
+          "claim": "This rigorous, high-stakes event is open to all qualified undergraduate and graduate students enrolled in an accredited university anywhere in the world.",
+          "url": "https://www.youtube.com/watch?v=IRQr66kCPFg",
+          "sourceName": "High Frequency Trading Competition 2026 - Stevens Institute of Technology"
         }
       ],
       "executionSteps": [
-        "Map local finance firms and asset managers willing to sponsor monthly speaker slots in exchange for branded club events",
-        "Structure speakers into beginner (market basics), intermediate (strategy), and advanced (career paths) tiers to appeal across experience levels",
-        "Create formal sponsorship packages that quantify audience reach (current + projected membership growth) to pitch to financial services companies"
+        "Form a Crestview team and submit entries to HFTC-26 before the registration deadline.",
+        "Highlight team participation in sponsorship pitches to demonstrate engagement with prestigious industry competitions.",
+        "Use the competition as a membership recruitment tool by showcasing the rigor and prestige of the event to prospective traders."
       ],
       "confidence": "high"
     },
     {
-      "id": "card_mrb5jikn_3",
+      "id": "card_mrb6exms_3",
       "lane": "trend",
-      "idea": "Emphasize student-managed investment fund experience and hands-on trading platforms as core membership benefits to attract quality members amid growing competition from finance clubs.",
-      "whyItFitsYou": "Multiple peer clubs now offer simulated trading and Bloomberg Terminal access; Crestview must signal competitive differentiation through real portfolio management and professional tools to grow membership strategically.",
+      "idea": "Virtual and simulated trading competitions are becoming standard practice in student finance organizations, combining competitive gameplay with guest speaker sessions and multi-format learning.",
+      "whyItFitsYou": "Multiple prominent competitions (Arbiter Stock Trading Club, Bloomberg Global Trading Challenge, Stevens competitions) integrate simulated markets with educational programming, validating Crestview's hybrid approach of a fall competition plus speaker series for member engagement and sponsorship appeal.",
       "evidence": [
         {
-          "claim": "Focus on developing quality members who embody the club's mission rather than reactive growth",
-          "url": "https://www.adventiscg.com/blog-articles/how-to-start-a-selective-undergraduate-finance-organization",
-          "sourceName": "Adventis Consulting Group"
+          "claim": "Students will compete with simulated trading and rewards. In addition there will be guest speakers and interaction to learn trading from different perspectives.",
+          "url": "https://students.arbitersports.com/programs/2025-26-stock-trading-club",
+          "sourceName": "2025-26 Stock Trading Club | Arbiter"
+        },
+        {
+          "claim": "Teams of 3-5 students will compete against other top students around the world. The winning team will have the highest Time Weighted Relative Return relative to the Bloomberg World Large, Mid & Small Cap Price Return Index (WLS Index). The competition gives students hands-on experience of real-world investing.",
+          "url": "https://jindal.utdallas.edu/student-resources/finance-lab/stock-trading-competitions",
+          "sourceName": "Stock Trading Competitions - Naveen Jindal School of Management"
+        },
+        {
+          "claim": "Over the two day competition, participants will compete in a series of trading and quantitative research challenges developed by Traders at Berkeley.",
+          "url": "https://traders.berkeley.edu/competition.html",
+          "sourceName": "Berkeley Trading Competition - Traders at Berkeley"
         }
       ],
       "executionSteps": [
-        "Establish a Crestview Student Managed Investment Fund with real capital and Bloomberg Terminal access as flagship membership benefit",
-        "Create transparent admissions criteria emphasizing fit with club mission over raw numbers to attract committed members",
-        "Market the fund's real portfolio performance and professional tool access in recruitment to position Crestview as elite alternative to casual trading clubs"
+        "Design Crestview's fall competition to include both simulated market challenges and guest speaker sessions featuring industry professionals.",
+        "Emphasize to sponsors that the multi-format approach (competition + education) aligns with industry-standard practices and broadens member engagement.",
+        "Promote the speaker series as a draw for members who may not compete but want to learn trading fundamentals."
       ],
-      "confidence": "medium"
+      "confidence": "high"
     }
   ],
   "receipt": {
-    "runId": "run_mrb5inv6_gbvnhs",
-    "totalUsd": 0.0648,
+    "runId": "run_mrb6egw4_khssto",
+    "totalUsd": 0.0656,
     "byStage": [
       {
         "stage": "plan",
@@ -133,21 +122,21 @@
       {
         "stage": "synthesize",
         "provider": "anthropic",
-        "usd": 0.008834
+        "usd": 0.009552
       }
     ],
-    "localTokenShare": 57
+    "localTokenShare": 49
   },
   "meta": {
-    "runId": "run_mrb5inv6_gbvnhs",
+    "runId": "run_mrb6egw4_khssto",
     "queries": [
-      "comparable student trading organizations sponsorships strategies 2024",
-      "student finance clubs successful membership growth tactics",
-      "trading competition student organizations fall 2024 outreach channels",
-      "student financial services orgs sponsorship opportunities 2024",
-      "how to run a student trading competition with sponsors",
-      "student trading club marketing strategies 2024",
-      "financial services student orgs successful sponsorship models"
+      "student finance organizations successful sponsorships 2026",
+      "trading competition student orgs fall 2026 strategies",
+      "student trading club sponsorship opportunities 2026",
+      "student finance org growth tactics 2026",
+      "student trading competition outreach channels 2026",
+      "student finance organization marketing trends 2026",
+      "student trading club sponsor categories 2026"
     ],
     "lanes": [
       "comparable",
@@ -159,6 +148,6 @@
     "droppedForNoCitation": 0,
     "cloudModel": "claude-haiku-4-5",
     "notices": [],
-    "capturedAt": "2026-07-07T21:19:29.735Z"
+    "capturedAt": "2026-07-07T21:43:55.588Z"
   }
 }

@@ -119,6 +119,17 @@ export function isLane(x: string): x is IdeaLane {
   return (LANES as readonly string[]).includes(x);
 }
 
+// Human-readable current date, injected into prompts so the model grounds all
+// timing in the present and never frames a past date as upcoming.
+export function todayStr(): string {
+  const MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  const d = new Date();
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+}
+
 // Tolerant JSON extraction — strips code fences / stray prose that a local
 // model may wrap around its JSON before we hand it to zod.
 export function looseJsonParse(raw: string): unknown {

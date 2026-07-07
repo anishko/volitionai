@@ -18,10 +18,10 @@ that team to everyone else — and shows you the receipt."
 2. YOURS: persistent structured profile + voice from your actual
    content. Generic tools restart from zero every conversation.
 3. AUDITABLE + CHEAP, BUILT ON OPEN INFRASTRUCTURE: hybrid local/cloud
-   LLM routing. ~70% of tokens run locally on open-weight models
-   (Ollama) at $0 marginal cost; synthesis routes to the cheapest
-   capable cloud model by default (Haiku), provable per-run via the
-   Cost Receipt. The local models are open-weight and the router is
+   LLM routing. Roughly half of tokens run locally at $0 on open-weight
+   models (Ollama) — the exact split is printed on every receipt;
+   synthesis routes to the cheapest capable cloud model by default
+   (Haiku), provable per-run via the Cost Receipt. The local models are open-weight and the router is
    model-agnostic — cloud models are interchangeable suppliers, so
    there is no vendor lock-in. Every pipeline stage is metered; every
    answer displays its true cost (e.g. "This briefing cost $0.04").

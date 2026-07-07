@@ -3,7 +3,7 @@
 import { ollamaChat } from "@/lib/ai/ollama";
 import { anthropicMessage } from "@/lib/ai/anthropic";
 import { CostMeter } from "@/lib/ai/cost";
-import { PlanSchema, looseJsonParse, type Plan } from "./schema";
+import { PlanSchema, looseJsonParse, todayStr, type Plan } from "./schema";
 import type { BusinessProfile } from "@/types";
 
 const SYSTEM = `You are a research planner. Given an organization profile, produce web-search
@@ -18,7 +18,9 @@ Return ONLY JSON: {"queries": string[], "lanes": string[]}.
 Choose 2-3 lanes that the queries can actually support with public evidence.`;
 
 function buildPrompt(p: BusinessProfile): string {
-  return `PROFILE:
+  return `TODAY'S DATE: ${todayStr()}. Bias queries toward current and upcoming timeframes; do not search for events or seasons that have already passed.
+
+PROFILE:
 name: ${p.businessName}
 orgType: ${p.orgType}
 industry: ${p.industry}

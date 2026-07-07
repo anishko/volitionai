@@ -8,7 +8,7 @@
 | Output form | prose | prose | dashboards | captions | execution-ready IdeaCards |
 | Comparable-org benchmarking | no | no | $$$$ | no | core lane |
 | Cost per answer visible | never | never | never | never | on every card |
-| Local/private processing | no | no | no | no | ~70% of tokens on-device |
+| Local/private processing | no | no | no | no | roughly half of tokens on-device at $0 (exact split on every receipt) |
 | Built on open infrastructure | no | no | no | no | open-weight local models, model-agnostic router, no vendor lock-in |
 | Price | $20/mo generic | $20/mo | $800-3,000/mo | $39+/mo | audited $0.03-0.13 per run — you see the receipt |
 

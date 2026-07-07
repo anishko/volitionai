@@ -8,6 +8,7 @@ import {
   SynthesisSchema,
   SYNTHESIS_JSON_SCHEMA,
   looseJsonParse,
+  todayStr,
   type IdeaCardCore,
   type Plan,
 } from "./schema";
@@ -20,7 +21,9 @@ HARD RULES (a card that breaks any rule will be discarded):
 2. If a lane has no supporting evidence, return NO card for that lane. Fewer real cards beats padded ones.
 3. "idea" is one concrete sentence. "whyItFitsYou" ties it to THIS org's profile. "executionSteps" are 2-4 concrete actions.
 4. For "comparable" lane cards, populate "comparables" (name + whyComparable + notablePlays + the source url). Other lanes: use an empty array.
-5. Output JSON only, matching the required schema. Set "confidence" to high/medium/low based on how directly the evidence supports the idea.`;
+5. Output JSON only, matching the required schema. Set "confidence" to high/medium/low based on how directly the evidence supports the idea.
+6. DATE GROUNDING: today's date is provided below. Reference only present or future timeframes. Never describe a date that has already passed as upcoming; if the evidence only mentions a past occurrence of a recurring event, refer to its next/annual cycle generically (e.g. "its annual spring conference") rather than stating a specific past date as if it were ahead.
+7. EVENTS FOR FUNDRAISING/SPONSORS/DONORS: when the profile's goals include fundraising, sponsors, donors, or events, opportunity-lane cards should surface specific NAMED events/conferences. For each named event, include in the idea/whyItFitsYou/executionSteps whichever of these are CITABLE from the evidence: annual timing, issue-area fit, known past sponsors, organizer contact or contact path, and prior media coverage. Each such field must be cited (its URL in the card's evidence) or omitted entirely — never guess a date, sponsor, or contact.`;
 
 function buildPrompt(
   profile: BusinessProfile,
@@ -34,7 +37,9 @@ function buildPrompt(
     )
     .join("\n\n");
 
-  return `ORGANIZATION PROFILE:
+  return `TODAY'S DATE: ${todayStr()} (reference only present or future timeframes).
+
+ORGANIZATION PROFILE:
 name: ${profile.businessName}
 orgType: ${profile.orgType} | industry: ${profile.industry}
 location: ${profile.city}, ${profile.state}

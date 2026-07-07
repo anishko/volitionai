@@ -10,8 +10,9 @@ Proprietary · Built on open infrastructure · FEE Hackathon 2026 · Team Voliti
 
 ## Why it's not a chatbot
 Persistent org profile + voice · mechanically enforced citations ·
-hybrid local/cloud LLM routing (~70% of tokens run locally; synthesis
-routes to the cheapest capable cloud model by default, Haiku) ·
+hybrid local/cloud LLM routing (roughly half of tokens run locally at $0 —
+the exact split is printed on every receipt; synthesis routes to the
+cheapest capable cloud model by default, Haiku) ·
 per-query cost receipts · comparable-org benchmarking · open-weight
 local models, model-agnostic router, no vendor lock-in.
 

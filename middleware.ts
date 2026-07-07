@@ -31,9 +31,22 @@ export async function middleware(request: NextRequest) {
   });
 
   // Refreshes the session cookie when expired; required by @supabase/ssr.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Degrade to unauthenticated on ANY error (misconfigured/unreachable Supabase,
+  // edge fetch failure) rather than 500 the whole route — a broken auth backend
+  // must not take down /login, /onboarding, and /events with a server error.
+  // NOTE for auth PR owner: added after prod returned 500 on all auth routes
+  // when Supabase env was set-but-broken; treat this as the intended failure mode.
+  let user = null;
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+  } catch (err) {
+    console.error(
+      "[middleware] supabase.auth.getUser failed; treating request as unauthenticated:",
+      err,
+    );
+    user = null;
+  }
 
   const path = request.nextUrl.pathname;
   if (!user && PROTECTED_PREFIXES.some((p) => path.startsWith(p))) {

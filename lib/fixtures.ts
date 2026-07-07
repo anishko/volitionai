@@ -6,6 +6,20 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { IdeasRunResult } from "./pipeline/run";
 
+// Static imports so fixtures are bundled INTO the serverless function.
+// Reading them via fs from process.cwd() fails on Vercel (the files are not in
+// the lambda filesystem) — importing the JSON makes the cached path work in prod.
+import crestview from "@/fixtures/demo/crestview-trading-club.json";
+import camino from "@/fixtures/demo/camino-coffee.json";
+import liberty from "@/fixtures/demo/liberty-legal-aid.json";
+
+const FIXTURES: Record<string, IdeasRunResult> = {
+  "crestview-trading-club": crestview as unknown as IdeasRunResult,
+  "camino-coffee": camino as unknown as IdeasRunResult,
+  "liberty-legal-aid": liberty as unknown as IdeasRunResult,
+};
+
+// Local-only: where captureFixture writes new fixtures during dev (CAPTURE_FIXTURE=1).
 const FIXTURE_DIR = path.join(process.cwd(), "fixtures", "demo");
 
 export function slugify(s: string): string {
@@ -34,20 +48,10 @@ export async function captureFixture(
 }
 
 export async function loadFixture(slug: string): Promise<IdeasRunResult | null> {
-  try {
-    const file = path.join(FIXTURE_DIR, `${slug}.json`);
-    const raw = await fs.readFile(file, "utf8");
-    return JSON.parse(raw) as IdeasRunResult;
-  } catch {
-    return null;
-  }
+  // Bundled at build time — works identically on localhost and Vercel serverless.
+  return FIXTURES[slug] ?? null;
 }
 
 export async function listFixtures(): Promise<string[]> {
-  try {
-    const files = await fs.readdir(FIXTURE_DIR);
-    return files.filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/, ""));
-  } catch {
-    return [];
-  }
+  return Object.keys(FIXTURES);
 }

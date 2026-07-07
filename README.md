@@ -25,6 +25,18 @@ local models, model-agnostic router, no vendor lock-in.
 4. cp .env.example .env.local  (keys from Anish in WhatsApp)
 5. npm run dev → http://localhost:3000
 
+### Nonprofit Events (auth + profiles) env
+The nonprofit events surface (/login, /onboarding, /events) needs a
+Supabase project with the migrations in supabase/ applied and Google
+OAuth enabled (Supabase Dashboard → Auth → Providers → Google; app
+redirect URL is `<site>/auth/callback`):
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY  (server-only: query_costs ledger writes)
+
+Without these, the legacy demo at / keeps working and /login shows a
+"not configured" notice.
+
 ## Docs
 CLAUDE.md (context) · docs/ARCHITECTURE.md · docs/DATA_SOURCES.md ·
 docs/COST_AND_AUDIT.md · docs/DIFFERENTIATION.md · docs/DEMO.md

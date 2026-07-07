@@ -1,0 +1,144 @@
+{
+  "profile": {
+    "businessName": "Camino Coffee",
+    "orgType": "independent coffee shop",
+    "industry": "food and beverage",
+    "city": "Las Vegas",
+    "state": "",
+    "audience": "local community and visitors",
+    "goals": [
+      "Increase foot traffic",
+      "Enhance social media presence"
+    ],
+    "voice": "friendly and welcoming",
+    "pastContentThemes": [
+      "Coffee culture",
+      "Local events"
+    ]
+  },
+  "cards": [
+    {
+      "id": "card_mrb5jy2q_4",
+      "lane": "trend",
+      "idea": "Post drink-making videos and aesthetic imagery on social media to align with current coffee shop content trends and increase engagement.",
+      "whyItFitsYou": "Camino Coffee's goal to enhance social media presence directly matches this trending format that coffee shops are using to build brand identity and connect with followers.",
+      "evidence": [
+        {
+          "claim": "Coffee shop social media trends include drink-making videos, funny and relatable content, and aesthetic imagery",
+          "url": "https://www.yourbrandcafe.com/blog/social-media-trends-for-coffee-shops",
+          "sourceName": "Your Brand Cafe - Social Media Trends For Coffee Shops"
+        }
+      ],
+      "executionSteps": [
+        "Create weekly drink-making videos showcasing signature Camino Coffee drinks",
+        "Post aesthetic imagery of your cafe atmosphere and coffee presentation",
+        "Schedule posts for afternoons, evenings, and weekends to maximize engagement"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "card_mrb5jy2q_5",
+      "lane": "opportunity",
+      "idea": "Launch a social media giveaway campaign offering a prize worth visiting for, then convert followers into in-store customers through targeted calls-to-action.",
+      "whyItFitsYou": "This directly addresses both of Camino Coffee's goals—increasing foot traffic and enhancing social media presence—by growing your audience affordably and driving real visits.",
+      "evidence": [
+        {
+          "claim": "Hosting a giveaway for your coffee shop is a quick and effective way to grow your social audience and eventually convert them into real-life customers",
+          "url": "https://www.sumup.com/en-us/business-guide/social-media-coffee",
+          "sourceName": "SumUp - How to Run Your Coffee Shop's Social Media Accounts"
+        },
+        {
+          "claim": "Use calls to action—verbs and adverbs—to get followers to comment on your post, visit your shop",
+          "url": "https://www.espresso-services.com/espresso-blog/social-media-strategies-for-coffee-shop-and-restaurant-owners",
+          "sourceName": "Espresso Services - Social Media Strategies for Coffee Shop Owners"
+        }
+      ],
+      "executionSteps": [
+        "Design a giveaway prize that reflects Camino Coffee's brand and appeals to your local audience",
+        "Promote the giveaway with clear calls-to-action directing winners to visit in-store",
+        "Track which new followers convert to repeat customers to measure ROI"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "card_mrb5jy2q_6",
+      "lane": "comparable",
+      "idea": "Study how community-focused independent coffee shops build loyalty through in-store experiences and local partnerships, then apply similar tactics at Camino Coffee.",
+      "whyItFitsYou": "As an independent coffee shop in Las Vegas targeting local community visitors, learning from peers who've successfully positioned themselves as community hubs will directly support your foot traffic and brand goals.",
+      "evidence": [
+        {
+          "claim": "Customers who walk into your local, independent coffee shop aren't just looking for a fresh cup of coffee—they also want a memorable experience",
+          "url": "https://freshcup.com/more-than-coffee-5-tips-on-building-community-in-your-coffee-shop",
+          "sourceName": "Fresh Cup - More Than Coffee: 5 Tips on Building Community In Your Coffee Shop"
+        }
+      ],
+      "comparables": [
+        {
+          "name": "Chemn Cafe",
+          "whyComparable": "Recognized as a community-focused coffee shop that brings people together and fosters local connections through shared experiences",
+          "notablePlays": [
+            "Building strong community connections",
+            "Serving as a gathering place for locals"
+          ],
+          "url": "https://chemncafe.com/blog/community-connections-how-coffee-shops-bring-people-together"
+        }
+      ],
+      "executionSteps": [
+        "Host local events or workshops at Camino Coffee to encourage repeat visits",
+        "Partner with nearby businesses to cross-promote and expand your community presence",
+        "Document community moments on social media to reinforce your friendly, welcoming brand voice"
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "receipt": {
+    "runId": "run_mrb5jk3w_uj68hd",
+    "totalUsd": 0.0636,
+    "byStage": [
+      {
+        "stage": "plan",
+        "provider": "ollama",
+        "usd": 0
+      },
+      {
+        "stage": "search",
+        "provider": "tavily",
+        "usd": 0.056
+      },
+      {
+        "stage": "rank",
+        "provider": "ollama",
+        "usd": 0
+      },
+      {
+        "stage": "synthesize",
+        "provider": "anthropic",
+        "usd": 0.00763
+      }
+    ],
+    "localTokenShare": 54
+  },
+  "meta": {
+    "runId": "run_mrb5jk3w_uj68hd",
+    "queries": [
+      "comparable independent coffee shops in Las Vegas strategies to increase foot traffic",
+      "how do successful coffee shops in Las Vegas engage with local community and visitors",
+      "trending social media content for coffee shops in Las Vegas",
+      "opportunities for coffee shops in Las Vegas to partner with local influencers",
+      "best practices for enhancing social media presence for independent coffee shops",
+      "current trends in coffee shop marketing in Las Vegas",
+      "how to leverage local events for foot traffic in Las Vegas coffee shops"
+    ],
+    "lanes": [
+      "comparable",
+      "trend",
+      "opportunity"
+    ],
+    "evidenceFetched": 35,
+    "evidenceRanked": 12,
+    "droppedForNoCitation": 0,
+    "cloudModel": "claude-haiku-4-5",
+    "notices": [],
+    "capturedAt": "2026-07-07T21:19:49.826Z"
+  }
+}

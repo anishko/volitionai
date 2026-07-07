@@ -1,0 +1,164 @@
+{
+  "profile": {
+    "businessName": "Crestview Trading Club",
+    "orgType": "student organization",
+    "industry": "financial services",
+    "city": "",
+    "state": "",
+    "audience": "students",
+    "goals": [
+      "land sponsors",
+      "grow membership",
+      "run a trading competition this fall"
+    ],
+    "voice": "educational and engaging",
+    "pastContentThemes": []
+  },
+  "cards": [
+    {
+      "id": "card_mrb5jikn_1",
+      "lane": "comparable",
+      "idea": "Partner with established trading competition platforms like CME Group's University Trading Challenge to run a professionally-hosted fall competition that provides simulated trading access and legitimacy.",
+      "whyItFitsYou": "Crestview Trading Club needs a credible, turnkey competition model to execute its fall trading event while establishing sponsorship relationships with recognized industry players.",
+      "evidence": [
+        {
+          "claim": "CME Group University Trading Challenge is a complimentary electronic trading competition that allows students to experience real-time trading with teams of undergraduate and graduate students trading CME Group products on a professional platform",
+          "url": "https://www.cmegroup.com/events/university-trading-challenge.html",
+          "sourceName": "CME Group"
+        }
+      ],
+      "comparables": [
+        {
+          "name": "CME Group University Trading Challenge",
+          "whyComparable": "Offers a free, professionally-managed trading competition for college students with simulated platform and real-world asset classes",
+          "notablePlays": [
+            "Complimentary electronic trading competition",
+            "Professional CQG trading platform access",
+            "Multiple asset classes available",
+            "Attracts sponsors from top financial firms"
+          ],
+          "url": "https://www.cmegroup.com/events/university-trading-challenge.html"
+        },
+        {
+          "name": "K-State Investment Club Stock Market Competition",
+          "whyComparable": "Runs an annual departmentally-backed stock market competition open to all students from November to April",
+          "notablePlays": [
+            "Semester-long competition format",
+            "Departmental partnership model",
+            "Open to all student levels"
+          ],
+          "url": "https://cba.k-state.edu/success/student-organizations/investmentclub"
+        },
+        {
+          "name": "Flagler College Financial Investment Club",
+          "whyComparable": "Combines beginner-friendly mock trading competitions with guest speakers and plans for student-managed investment fund",
+          "notablePlays": [
+            "Mock trading competitions",
+            "Guest speaker programming",
+            "Hands-on experience with community impact focus"
+          ],
+          "url": "https://www.flagler.edu/news-events/news/saints-take-market-through-financial-investment-club"
+        }
+      ],
+      "executionSteps": [
+        "Contact CME Group's University Trading Challenge to register Crestview as an official participating team and secure competition dates",
+        "Leverage CME's Day of Market Education day to host guest speakers and build sponsor relationships",
+        "Promote the official CME platform affiliation in membership drives to demonstrate legitimacy and differentiate from other campus clubs"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "card_mrb5jikn_2",
+      "lane": "opportunity",
+      "idea": "Develop a tiered guest speaker series with finance professionals and fund managers to attract sponsors seeking talent pipeline access and differentiate membership value.",
+      "whyItFitsYou": "Crestview's stated goals include landing sponsors and growing membership; professional speakers create tangible member value while offering sponsors direct student audience access.",
+      "evidence": [
+        {
+          "claim": "The Investment Club provides opportunities for members to learn about investment management from business professionals through on-campus meetings and employer visits, with members attending the Berkshire Hathaway Annual Meeting",
+          "url": "https://cba.k-state.edu/success/student-organizations/investmentclub",
+          "sourceName": "K-State Investment Club"
+        },
+        {
+          "claim": "Flagler's Financial Investment Club combines beginner friendly discussions, mock trading competitions, and guest speakers to help students learn market strategies and develop confidence in financial decisions",
+          "url": "https://www.flagler.edu/news-events/news/saints-take-market-through-financial-investment-club",
+          "sourceName": "Flagler College"
+        }
+      ],
+      "executionSteps": [
+        "Map local finance firms and asset managers willing to sponsor monthly speaker slots in exchange for branded club events",
+        "Structure speakers into beginner (market basics), intermediate (strategy), and advanced (career paths) tiers to appeal across experience levels",
+        "Create formal sponsorship packages that quantify audience reach (current + projected membership growth) to pitch to financial services companies"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "card_mrb5jikn_3",
+      "lane": "trend",
+      "idea": "Emphasize student-managed investment fund experience and hands-on trading platforms as core membership benefits to attract quality members amid growing competition from finance clubs.",
+      "whyItFitsYou": "Multiple peer clubs now offer simulated trading and Bloomberg Terminal access; Crestview must signal competitive differentiation through real portfolio management and professional tools to grow membership strategically.",
+      "evidence": [
+        {
+          "claim": "Focus on developing quality members who embody the club's mission rather than reactive growth",
+          "url": "https://www.adventiscg.com/blog-articles/how-to-start-a-selective-undergraduate-finance-organization",
+          "sourceName": "Adventis Consulting Group"
+        }
+      ],
+      "executionSteps": [
+        "Establish a Crestview Student Managed Investment Fund with real capital and Bloomberg Terminal access as flagship membership benefit",
+        "Create transparent admissions criteria emphasizing fit with club mission over raw numbers to attract committed members",
+        "Market the fund's real portfolio performance and professional tool access in recruitment to position Crestview as elite alternative to casual trading clubs"
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "receipt": {
+    "runId": "run_mrb5inv6_gbvnhs",
+    "totalUsd": 0.0648,
+    "byStage": [
+      {
+        "stage": "plan",
+        "provider": "ollama",
+        "usd": 0
+      },
+      {
+        "stage": "search",
+        "provider": "tavily",
+        "usd": 0.056
+      },
+      {
+        "stage": "rank",
+        "provider": "ollama",
+        "usd": 0
+      },
+      {
+        "stage": "synthesize",
+        "provider": "anthropic",
+        "usd": 0.008834
+      }
+    ],
+    "localTokenShare": 57
+  },
+  "meta": {
+    "runId": "run_mrb5inv6_gbvnhs",
+    "queries": [
+      "comparable student trading organizations sponsorships strategies 2024",
+      "student finance clubs successful membership growth tactics",
+      "trading competition student organizations fall 2024 outreach channels",
+      "student financial services orgs sponsorship opportunities 2024",
+      "how to run a student trading competition with sponsors",
+      "student trading club marketing strategies 2024",
+      "financial services student orgs successful sponsorship models"
+    ],
+    "lanes": [
+      "comparable",
+      "opportunity",
+      "trend"
+    ],
+    "evidenceFetched": 35,
+    "evidenceRanked": 12,
+    "droppedForNoCitation": 0,
+    "cloudModel": "claude-haiku-4-5",
+    "notices": [],
+    "capturedAt": "2026-07-07T21:19:29.735Z"
+  }
+}

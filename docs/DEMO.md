@@ -26,8 +26,10 @@ card. "Same engine. A club, a coffee shop, a sports team — anyone."
 
 ## Close
 "Kirzner called it entrepreneurial alertness — seeing the
-opportunity others miss. Big firms buy alertness. Volition makes it
-open-source." (Apache 2.0 + self-host line if time.)
+opportunity others miss. Big firms buy alertness from one vendor.
+Volition buys it in an open market — open-weight local models by
+default, cloud as an interchangeable supplier — so anyone can afford
+it." (open-infrastructure / no-vendor-lock-in line if time.)
 
 ## Insurance
 FIXTURES=true env flag serves a full cached run, labeled in-UI.

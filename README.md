@@ -1,16 +1,19 @@
 # Volition
-An open-source insights team on demand. Tell Volition what you are —
+A proprietary insights team on demand, built on open AI
+infrastructure. Tell Volition what you are —
 a school club, a small business, a sports team — and it researches
 your world (trends, comparable orgs, opportunities) and returns
 cited, execution-ready ideas, with the true cost of every answer
 printed on the answer.
 
-Apache-2.0 · FEE Hackathon 2026 · Team Volition
+Proprietary · Built on open infrastructure · FEE Hackathon 2026 · Team Volition
 
 ## Why it's not a chatbot
 Persistent org profile + voice · mechanically enforced citations ·
-hybrid local/cloud LLM routing (~70% of tokens at $0 on Ollama) ·
-per-query cost receipts · comparable-org benchmarking · self-hostable.
+hybrid local/cloud LLM routing (~70% of tokens run locally; synthesis
+routes to the cheapest capable cloud model by default, Haiku) ·
+per-query cost receipts · comparable-org benchmarking · open-weight
+local models, model-agnostic router, no vendor lock-in.
 
 ## Setup
 1. git clone https://github.com/anishko/volitionai.git && cd volitionai

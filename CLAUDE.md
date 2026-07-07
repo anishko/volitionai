@@ -17,10 +17,17 @@ that team to everyone else — and shows you the receipt."
    card. A chatbot gives you plausible; Volition gives you sourced.
 2. YOURS: persistent structured profile + voice from your actual
    content. Generic tools restart from zero every conversation.
-3. AUDITABLE + CHEAP: hybrid local/cloud LLM routing. ~70% of tokens
-   run on a local model (Ollama) at $0 marginal cost. Every pipeline
-   stage is metered; every answer displays its true cost (e.g.
-   "This briefing cost $0.04"). No other tool shows you that.
+3. AUDITABLE + CHEAP, BUILT ON OPEN INFRASTRUCTURE: hybrid local/cloud
+   LLM routing. ~70% of tokens run locally on open-weight models
+   (Ollama) at $0 marginal cost; synthesis routes to the cheapest
+   capable cloud model by default (Haiku), provable per-run via the
+   Cost Receipt. The local models are open-weight and the router is
+   model-agnostic — cloud models are interchangeable suppliers, so
+   there is no vendor lock-in. Every pipeline stage is metered; every
+   answer displays its true cost (e.g. "This briefing cost $0.04").
+   The infrastructure underneath is open; the product, code, profiles,
+   and benchmarking dataset are ours (proprietary). No other tool
+   shows you that.
 
 ## Interface principle
 AS SIMPLE AS POSSIBLE. One text box: "Tell me about your org."
@@ -50,8 +57,11 @@ Mission language: entrepreneurial alertness (Kirzner — spotting
 opportunities others miss IS the product), dispersed knowledge
 (Hayek), seen-and-unseen (Bastiat — the cost receipt makes unseen
 costs seen). Local models = individual ownership of compute, privacy
-from institutions. Apache 2.0 = open, commercializable, no
-gatekeeper's permission needed.
+from institutions. The free-market argument is architectural, not a
+license: we BUY inference in a competitive open market — open-weight
+local models by default, cloud models as interchangeable suppliers —
+instead of depending on one vendor. No gatekeeper's permission is
+needed to run it, because the infrastructure it stands on is open.
 
 ## Core design rules
 1. Citation or no card. Every IdeaCard has Evidence with a real URL.
@@ -83,4 +93,5 @@ lane + cost receipt; "draft it" runs LOCAL in org voice, $0).
 
 ## Conventions
 Branch per person, PRs to main, gh pr merge N --rebase. Types in
-/types are the contract. Ship > perfect. License: Apache-2.0.
+/types are the contract. Ship > perfect. Proprietary product built on
+open infrastructure; all rights reserved (see NOTICE).

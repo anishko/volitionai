@@ -62,23 +62,6 @@ export default function Home() {
   const [result, setResult] = useState<RunResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Cached-run fallback: ?cached=1[&persona=slug] loads a captured fixture.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("cached") === "1") {
-      const p = params.get("persona") || PRESETS[0].slug;
-      loadCached(p);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Rotate the loading phase labels while a live run is in flight.
-  useEffect(() => {
-    if (!loading) return;
-    const t = setInterval(() => setPhase((p) => Math.min(p + 1, PHASES.length - 1)), 4000);
-    return () => clearInterval(t);
-  }, [loading]);
-
   async function loadCached(personaSlug: string) {
     setLoading(true);
     setError(null);
@@ -93,6 +76,24 @@ export default function Home() {
       setLoading(false);
     }
   }
+
+  // Cached-run fallback: ?cached=1[&persona=slug] loads a captured fixture.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("cached") === "1") {
+      const p = params.get("persona") || PRESETS[0].slug;
+      // Mount-only fetch keyed off the URL; the sync setLoading is the spinner.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadCached(p);
+    }
+  }, []);
+
+  // Rotate the loading phase labels while a live run is in flight.
+  useEffect(() => {
+    if (!loading) return;
+    const t = setInterval(() => setPhase((p) => Math.min(p + 1, PHASES.length - 1)), 4000);
+    return () => clearInterval(t);
+  }, [loading]);
 
   async function generate() {
     if (description.trim().length < 10) {

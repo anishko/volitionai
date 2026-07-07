@@ -1,5 +1,18 @@
 export type CostProvider = "anthropic" | "ollama" | "tavily" | "firecrawl" | "youtube" | "reddit";
-export type PipelineStage = "plan" | "extract_profile" | "extract_voice" | "search" | "scrape" | "rank" | "synthesize" | "draft";
+export type PipelineStage =
+  | "plan"
+  | "extract_profile"
+  | "extract_voice"
+  | "search"
+  | "scrape"
+  | "rank"
+  | "synthesize"
+  | "draft"
+  // Nonprofit Events pipeline (docs/NONPROFIT_EVENTS_PRD.md)
+  | "event_search"
+  | "event_scrape"
+  | "event_match"
+  | "donor_signal";
 
 export interface CostEvent {
   runId: string;

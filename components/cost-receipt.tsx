@@ -17,6 +17,10 @@ const STAGE_LABEL: Record<PipelineStage, string> = {
   rank: "Rank",
   synthesize: "Synthesize",
   draft: "Draft",
+  event_search: "Event search",
+  event_scrape: "Event scrape",
+  event_match: "Event match",
+  donor_signal: "Donor signal",
 };
 
 export function CostReceiptCard({

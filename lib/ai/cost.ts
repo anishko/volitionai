@@ -2,12 +2,7 @@
 // orchestrator rolls them into a CostReceipt that the UI prints on the answer.
 // This is the "show you the receipt" pillar — do not remove instrumentation.
 import { PRICES } from "./prices";
-import type {
-  CostEvent,
-  CostReceipt,
-  CostProvider,
-  PipelineStage,
-} from "@/types/cost";
+import type { CostEvent, CostReceipt, PipelineStage } from "@/types/cost";
 
 type AnthropicModel = keyof typeof PRICES.anthropic;
 

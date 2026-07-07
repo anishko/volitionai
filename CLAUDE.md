@@ -9,8 +9,10 @@ RESEARCHES your world live and returns IdeaCards: a concrete idea,
 the cited evidence behind it, why it fits YOU, execution steps, and
 the exact cost of producing that answer.
 
-One-liner: "Every Fortune 500 has an insights team. Volition gives
-that team to everyone else — and shows you the receipt."
+One-liner: "Grounded intelligence for mission-driven organizations —
+nonprofits, advocacy groups, associations, and clubs. Volition finds
+the donors, sponsors, and events they run on, cites the evidence, and
+shows you the receipt. Same engine serves any small org."
 
 ## The three pillars (differentiation — memorize)
 1. GROUNDED: agentic research over live web data. Citation or no

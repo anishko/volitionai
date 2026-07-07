@@ -22,6 +22,12 @@ interface RunResult {
 
 const PRESETS = [
   {
+    slug: "liberty-legal-aid",
+    label: "Liberty Legal Aid",
+    description:
+      "We're Liberty Legal Aid, a national government-accountability nonprofit. Our issue areas are child welfare and family reunification, eminent domain abuse, homeless defense, and local government misconduct. Our audience is donors and supporters in the liberty movement. We want to find issue-aligned conferences to sponsor, convert donors at in-person events, and time our campaigns to legislative calendars. Our voice is urgent but factual.",
+  },
+  {
     slug: "crestview-trading-club",
     label: "Crestview Trading Club",
     description:
@@ -32,12 +38,6 @@ const PRESETS = [
     label: "Camino Coffee",
     description:
       "We're Camino Coffee, an independent coffee shop in Las Vegas with 12 employees. We want more foot traffic and a stronger social media presence.",
-  },
-  {
-    slug: "liberty-legal-aid",
-    label: "Liberty Legal Aid",
-    description:
-      "We're Liberty Legal Aid, a national government-accountability nonprofit. Our issue areas are child welfare and family reunification, eminent domain abuse, homeless defense, and local government misconduct. Our audience is donors and supporters in the liberty movement. We want to find issue-aligned conferences to sponsor, convert donors at in-person events, and time our campaigns to legislative calendars. Our voice is urgent but factual.",
   },
 ];
 
@@ -141,11 +141,16 @@ export default function Home() {
     <div className="min-h-screen w-full bg-zinc-50 px-4 py-10 dark:bg-black sm:px-8">
       <div className="mx-auto max-w-5xl">
         <header className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
             Volition
+          </p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            Grounded intelligence for mission-driven organizations.
           </h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            An insights team on demand — grounded, yours, and it shows you the receipt.
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
+            Nonprofits, advocacy groups, associations, and clubs run on donors,
+            sponsors, and events — Volition finds them, cites the evidence, and
+            shows you the receipt.
           </p>
         </header>
 

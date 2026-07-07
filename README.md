@@ -1,10 +1,11 @@
 # Volition
-A proprietary insights team on demand, built on open AI
-infrastructure. Tell Volition what you are —
-a school club, a small business, a sports team — and it researches
-your world (trends, comparable orgs, opportunities) and returns
-cited, execution-ready ideas, with the true cost of every answer
-printed on the answer.
+Grounded intelligence for mission-driven organizations — nonprofits,
+advocacy groups, associations, and clubs. Volition finds the donors,
+sponsors, and events they run on, cites the evidence, and shows you the
+receipt. Same engine serves any small org. It researches your world
+(trends, comparable orgs, opportunities) and returns cited,
+execution-ready ideas, with the true cost of every answer printed on
+the answer. Built as a proprietary product on open AI infrastructure.
 
 Proprietary · Built on open infrastructure · FEE Hackathon 2026 · Team Volition
 

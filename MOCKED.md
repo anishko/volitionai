@@ -7,6 +7,13 @@
   through the same citation validator as a live run (real, fetched URLs).
   Captured personas: `crestview-trading-club`, `camino-coffee`.
 
+Schema-ahead-of-UI (not mocked, just unbuilt):
+- Post-event debrief (`event_debriefs` table, migration `20260707000700_*`):
+  promoted to v1.5 so the schema lands now, but there is **NO UI and no
+  read/write path in the app yet** — nothing is surfaced, so there is nothing
+  to label in-UI. Listed here per the honesty rule; do not claim a debrief
+  feature in the demo until v1.5 ships it.
+
 Nothing else is mocked. Everything else (profile, search, synthesis,
 citations, cost receipt, "draft it") runs live.
 Rule: if it ships mocked, it's labeled in the UI and listed here.

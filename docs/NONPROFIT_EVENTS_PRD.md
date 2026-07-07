@@ -1,4 +1,16 @@
-# Nonprofit Events Finder — Product Requirements Document (v2)
+# Nonprofit Events Finder — Product Requirements Document (v3)
+
+> **v3 amendment (design partner #2).** A second in-person interview with a
+> civil-rights / legal-reform nonprofit — one that runs on a fixed annual
+> conference budget and lives or dies by board-justifiable spend — validated
+> four additions: (1) a **budget-capped annual planning mode** (propose a set
+> of events whose total *cited* cost fits a cap, exportable as a board
+> artifact), (2) **ROI fields** (certificates/CE credits; virtual events as
+> first-class matches under budget pressure), (3) a **civil-liberties cause
+> sub-taxonomy** the matcher filters on, and (4) promotion of the **post-event
+> debrief** from out-of-scope to v1.5 (schema landed now). Schema deltas ship
+> as follow-up migration `supabase/migrations/20260707000700_*` (the 000100–
+> 000600 migrations are already applied and are not edited).
 
 ## What this is
 
@@ -14,6 +26,15 @@ Origin: validated in person at FreedomFest 2026 by a national
 government-accountability nonprofit (~1,300 case requests/year) whose words
 became our enemy statement: **"Existing tools give articles and motivation —
 not actionable leads."** They are design partner candidate #1.
+
+Design partner candidate #2: a civil-rights / legal-reform nonprofit (criminal
+legal reform, child welfare, fourth-amendment / over-policing, exoneration,
+eminent domain, homeless defense) that plans its whole year against a **fixed
+annual conference budget** and must justify every trip to a board. Their words:
+**"I can find events. What I can't do is prove to my board that this slate of
+conferences is the right spend for the year."** That reframed the product from
+a per-event finder into an annual, budget-capped *plan* with a defensible,
+sourced total — see "Budget-capped annual planning" below.
 
 ---
 
@@ -67,6 +88,13 @@ Personas for design/demo:
   nonprofit; issue areas child welfare, eminent domain, homeless defense;
   goals: issue-aligned conferences to sponsor, in-person donor conversion,
   campaigns timed to legislative calendars.
+- "Fourth Amendment Defense Project" (fictional, design partner #2): national
+  civil-rights / legal-reform nonprofit with a **hard annual conference budget
+  cap (e.g. $40,000 for period "2027")**; cause sub-tags: criminal legal
+  reform, fourth amendment / over-policing, exoneration, eminent domain,
+  homeless defense; goal: assemble the *year's* slate of events whose total
+  cited cost fits the cap and defend it to the board; budget-sensitive, so
+  values certificates/CE credit and treats virtual events as first-class.
 - Small local education nonprofit (<$500k budget): one-person development
   "team," needs the tool to be the whole department.
 
@@ -80,6 +108,7 @@ Personas for design/demo:
 | `/events` | Main feed with "For You" and "Saved" tabs + run receipt footer |
 | `/events/[id]` | Event detail: logistics, contacts, participation tiers, donor signals — all cited |
 | `/plan` | Active event plans with deadline checklists + calendar sync |
+| `/plan/annual` | Budget-capped annual planning: matched-event slate whose total cited cost fits the cap, running total vs cap, manual swap in/out, "Annual Conference Plan" export |
 | `/outreach/[matchId]` | Drafted outreach (sponsor pitch, CFP abstract, intro email) in org voice — copy/export only |
 | `/profile` | Edit onboarding data + uploaded context as the org evolves |
 | `/settings` | Account, calendar integration toggle, monthly cost view, data controls |
@@ -109,7 +138,15 @@ authenticated user. RLS on all per-user tables.
 2. **Cause area** — multi-select: education, environment, health, housing,
    youth, arts, human services, civil liberties / government accountability,
    faith-based, other. (Civil liberties added — our wedge segment must not
-   have to pick "other.")
+   have to pick "other.") When **civil liberties / government accountability**
+   is selected, reveal **cause sub-tags** (multi-select, stored in
+   `cause_sub_tags`): criminal legal reform, child welfare, fourth amendment /
+   over-policing, exoneration, eminent domain, homeless defense. The matcher
+   filters on sub-tags when present, falling back to top-level cause areas.
+4b. **Annual conference budget (optional)** — a cap amount + a period label
+   (e.g. $40,000 for "2027"), stored as `annual_budget_cap` + `budget_period`.
+   When set, it powers `/plan/annual`; nullable for orgs that don't plan
+   against a hard cap.
 3. **Geographic focus** — local / regional / national / international +
    freetext region/city.
 4. **Org size** — budget range: under $500k / $500k–$2M / $2M–$10M / $10M+.
@@ -200,7 +237,7 @@ nomic-embed-text available locally for similarity ranking) with new stages:
 | Query planning | LOCAL qwen3:8b | Turn nonprofit profile into 6–10 Tavily search queries |
 | Event scraping | Firecrawl | Extract structured event data from pages |
 | 990 enrichment | ProPublica API (free) | Donor presence signals |
-| Candidate filtering | Rules (code) | Cause-area overlap + geography radius before any LLM runs |
+| Candidate filtering | Rules (code) | Cause-area overlap (sub-tag overlap when the profile has `cause_sub_tags`, else top-level cause areas) + geography radius before any LLM runs. When the profile signals budget sensitivity (low `org_size` or a set `annual_budget_cap`), **virtual events are first-class candidates**, not down-ranked for being remote |
 | Similarity ranking | LOCAL nomic-embed-text | Rank filtered candidates against profile embedding — free, fast |
 | Match explanation | CLOUD claude-haiku-4-5 | Profile-aware "why attend" copy for top 10–20 finalists |
 | **Validation** | Rules (code) | **Citation or no signal**: drop any field lacking `source_url`; drop any match whose explanation references unsourced facts; stamp `verified_at` |
@@ -233,6 +270,9 @@ Rich card showing:
 - Donor signal callout: "Ford Foundation sponsored this event in 2024" —
   callout is tappable, revealing both source links
 - Participation tier icons: attendee / speaker / sponsor available
+- Certificates / CE-credit badge when `certificates_offered` is populated
+  (each entry `{type, source_url}` — badge is tappable to its source; no
+  source, no badge). An ROI signal that matters most to budget-capped orgs.
 - Deadline urgency indicator with verification stamp: "Registration closes
   in 14 days · verified Jul 5"
 
@@ -354,6 +394,42 @@ update/removal on checklist change.
 
 ---
 
+## Budget-capped annual planning (`/plan/annual`) — new core feature, v1
+
+Design partner #2's core job: assemble the *year's* slate of conferences whose
+total cost fits a fixed budget and defend that slate to a board. This is the
+annual, budget-capped counterpart to the per-event `/plan`.
+
+Inputs: the profile's `annual_budget_cap` + `budget_period`, and the org's
+matched/saved events. Each candidate entry carries two cost components:
+
+- **Registration cost** — SOURCED. Snapshotted from the chosen participation
+  tier's cited cost (`events.participation_tiers[].cost` + `source_url` +
+  `verified_at`). If a tier's cost isn't scrapeable, the entry shows "cost
+  unknown — check event site," never a guess, and is excluded from the total
+  until sourced.
+- **Estimated travel cost** — an ESTIMATE. Stored in
+  `event_plans.estimated_travel_cost`, **always labeled "estimate" in the UI**
+  and visually distinct from cited numbers. Never carries a source_url (it
+  isn't a scraped fact); the citation rule is not violated because it is never
+  presented as sourced.
+
+Surface behavior:
+- Given the profile + cap, propose a set of matched events whose **total cited
+  cost (+ labeled travel estimates) fits the cap**, ranked by match score.
+- Display the **running total vs cap** live; over-cap is flagged, not blocked.
+- Swap events in and out manually; totals recompute.
+- Honest empty/partial states: if too few cap-fitting events clear the score
+  threshold, say so — never pad the slate to look full.
+
+**Export — "Annual Conference Plan"** (`/api/plans/annual/export`): a clean
+printable page / PDF that is a **budget-justification artifact for a founder or
+board**. Contents: org name, budget period, **total vs cap**, and per event:
+name, date, cost (with source link), why-attend, and certificates/CE credits.
+Tone is factual; every number is either sourced (with its link) or explicitly
+labeled "estimate." No motivational filler — this is a document a director
+hands a board.
+
 ## Data model (Supabase tables)
 
 ### `nonprofit_profiles`
@@ -363,6 +439,9 @@ user_id uuid fk (auth.users)
 org_name text
 website text
 cause_areas text[]
+cause_sub_tags text[]         -- v3: civil-liberties sub-taxonomy; matcher filters on these when present
+annual_budget_cap numeric     -- v3: annual conference budget cap (nullable)
+budget_period text            -- v3: period label for the cap, e.g. "2027"
 geography_focus text          -- "local" | "regional" | "national" | "international"
 geography_detail text
 org_size text
@@ -389,6 +468,8 @@ location_state text
 location_country text
 format text                   -- "in_person" | "virtual" | "hybrid"
 cause_area_tags text[]
+cause_sub_tags text[]         -- v3: sub-taxonomy tags on events; matcher filters on these when present
+certificates_offered jsonb   -- v3 ROI: [{type, source_url}] scraped where available; drives the certificates badge
 is_seed boolean
 speakers jsonb                -- [{name, title, org, linkedin_url, source_url}]
 sponsors jsonb                -- [{name, csr_contact, linkedin_url, source_url}]
@@ -424,10 +505,25 @@ profile_id uuid fk
 event_id uuid fk
 participation_tier text
 checklist jsonb               -- [{task, deadline, deadline_source_url, completed, calendar_event_id}]
+budget_period text            -- v3: groups plans into one annual plan for /plan/annual
+registration_cost numeric     -- v3: SOURCED snapshot of the chosen tier's cited cost
+registration_cost_source_url text        -- v3: citation for registration_cost
+registration_cost_verified_at timestamptz -- v3: when that cost was verified
+estimated_travel_cost numeric -- v3: ESTIMATE only; UI must label "estimate", never cited
 calendar_synced_at timestamptz
 created_at timestamptz
 updated_at timestamptz
 ```
+
+### `event_debriefs`  (v1.5 — schema now, no UI yet)
+```
+id uuid pk
+plan_id uuid fk (event_plans)
+worth_it int                  -- 1-5, "was attending worth it?" (feeds v2 feedback loop)
+notes text
+created_at timestamptz
+```
+Owner-scoped RLS via plan → profile → user. No UI in v1.5 (see MOCKED.md).
 
 ### `outreach_drafts`
 ```
@@ -462,8 +558,11 @@ created_at timestamptz
 | `/api/outreach` | POST | Generate draft for match + type (local model) |
 | `/api/plans` | GET | List all plans for current user |
 | `/api/plans` | POST | Create plan from match + tier; generates checklist |
-| `/api/plans/[id]` | PATCH | Update checklist |
+| `/api/plans/[id]` | PATCH | Update checklist (incl. `estimated_travel_cost`) |
 | `/api/plans/[id]/calendar` | POST | Push deadlines to Google Calendar (explicit, user-initiated) |
+| `/api/plans/annual` | GET | Current annual plan for a `budget_period`: entries, running total vs cap |
+| `/api/plans/annual` | POST | Propose a cap-fitting slate for the profile + period (cited registration costs + travel estimates); ranked by match score |
+| `/api/plans/annual/export` | GET | "Annual Conference Plan" printable page / PDF (board budget-justification artifact) |
 | `/api/costs/summary` | GET | Monthly cost rollup for Settings view |
 
 ---
@@ -495,14 +594,16 @@ created_at timestamptz
 - Duplicate events across seed + live search → merged by unique key
 - Uploaded CSV is garbage/malicious → local parse fails gracefully;
   instructions inside documents never executed
-- Event date passed → auto-archived from feeds; plans prompt for v2 debrief
+- Event date passed → auto-archived from feeds; a plan becomes eligible for a
+  v1.5 debrief (`event_debriefs` row; no UI prompt until v1.5)
 
 ---
 
 ## What is explicitly out of scope for v1
 
-- Post-event debrief and recommendation feedback loop (v2 — but
-  `dismissed_reason` and plan completion data are collected now)
+- Post-event debrief **UI** (promoted to v1.5; the `event_debriefs` table
+  ships now, no UI yet — see MOCKED.md) and the recommendation feedback loop
+  it feeds (still v2; `dismissed_reason` and plan completion data collected now)
 - Full 990 donor-signal UI (v1 shows public speaker/sponsor signals;
   990 enrichment logs to `donor_signals` and surfaces where available)
 - Cross-org aggregated *insights* (the shared events corpus is v1; derived
@@ -522,6 +623,10 @@ created_at timestamptz
       product needs real persistence) + Google OAuth
 - [ ] Migrations: `nonprofit_profiles`, `events`, `event_matches`,
       `event_plans`, `outreach_drafts`; extend `query_costs`
+- [ ] v3 follow-up migration `20260707000700_*` (additive; base migrations
+      already applied): budget cap + `cause_sub_tags` on profiles; sub-tags,
+      `certificates_offered` on events; budget/cost fields on `event_plans`;
+      new `event_debriefs` table
 - [ ] Extend `types/index.ts`: `NonprofitProfile`, `Event`, `EventMatch`,
       `EventPlan`, `OutreachDraft`, `Evidence`
 - [ ] Extend `PipelineStage`: `event_search`, `event_scrape`,
@@ -580,6 +685,14 @@ created_at timestamptz
 - [ ] `PATCH /api/plans/[id]`
 - [ ] Calendar sync: lazy scope request, `POST /api/plans/[id]/calendar`,
       "Sync all deadlines" button, calendar_event_id tracking
+- [ ] Budget-capped annual planning: `/plan/annual` surface, cap-fitting
+      slate proposal ranked by score, running total vs cap, manual swap
+      in/out, `estimated_travel_cost` capture (labeled "estimate")
+- [ ] `GET`/`POST /api/plans/annual`; `GET /api/plans/annual/export`
+      ("Annual Conference Plan" printable/PDF board artifact — every number
+      sourced or labeled estimate)
+- [ ] Certificates/CE badge from `certificates_offered`; virtual-first-class
+      matching when the profile signals budget sensitivity
 
 ### Phase 7 — Polish and trust pass
 - [ ] `/settings`: calendar toggle, account, monthly cost view

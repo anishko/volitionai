@@ -6,6 +6,8 @@ import {
 } from "./enrich";
 import { CostMeter } from "@/lib/ai/cost";
 import { enrichFromWebsite } from "./enrich";
+import { runEnrichment } from "./enrich";
+import type { NonprofitProfile } from "@/types";
 
 vi.mock("@/lib/data/tavily", () => ({
   tavilyExtract: vi.fn(),
@@ -81,11 +83,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-import { runEnrichment } from "./enrich";
-import type { NonprofitProfile } from "@/types";
-
 function fakeAdmin(updateImpl: (payload: unknown) => Promise<{ error: unknown }>) {
-  const eq = vi.fn(async (_col: string, _val: string) => ({ error: null }));
   const update = vi.fn((payload: unknown) => ({
     eq: async (_c: string, _v: string) => updateImpl(payload),
   }));
@@ -132,6 +130,9 @@ describe("runEnrichment (fail-closed persistence)", () => {
     await runEnrichment(admin, baseProfile(), "2026-07-08T00:00:00.000Z");
     expect(captured.extracted_profile.missionSummary).toBe("CONFIRMED");
     expect(captured.extracted_profile.causeKeywords).toEqual(["water"]);
+    expect(captured.extracted_profile.donorProfile).toBe("d");
+    expect(captured.extracted_profile.geographySummary).toBe("g");
+    expect(captured.extracted_profile.eventSearchHints).toEqual(["h"]);
     expect(captured.extracted_profile.suggestedEnrichments.status).toBe("ready");
   });
 

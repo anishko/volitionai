@@ -14,6 +14,7 @@ import { enrichDonorSignals } from "./enrich";
 import { filterCandidates, scoreEvent } from "./filter";
 import { explainMatches } from "./explain";
 import { validateEventFields } from "./validate";
+import { discoverCommunityEvents } from "./community";
 import {
   loadEventCorpus,
   upsertDiscoveredEvents,
@@ -156,12 +157,19 @@ export async function runEventMatch(
     notices.push(`${scrape.pagesFailed} event page(s) could not be scraped; results may be partial.`);
   }
 
-  // Store discovered events into the shared corpus (merge-or-insert).
+  // 3b. COMMUNITY DISCOVERY (Meetup API + Luma scrape) — both no-op cleanly when
+  // unconfigured. Skews virtual, which matters most to budget-sensitive orgs.
+  const community = await discoverCommunityEvents(meter, profile);
+  for (const note of community.notices) notices.push(note);
+
+  // Store all discovered events (deep-scraped + community) into the shared
+  // corpus (merge-or-insert) under the same dedupe + citation rules.
+  const toUpsert = [...scrape.events, ...community.events];
   let discovered: Event[] = [];
   let inserted = 0;
   let merged = 0;
-  if (scrape.events.length > 0) {
-    const upserted = await upsertDiscoveredEvents(admin, scrape.events, corpus);
+  if (toUpsert.length > 0) {
+    const upserted = await upsertDiscoveredEvents(admin, toUpsert, corpus);
     discovered = upserted.events;
     inserted = upserted.inserted;
     merged = upserted.merged;

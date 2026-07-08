@@ -8,8 +8,14 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
+  --font-heading: var(--font-display);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-signal: var(--signal);
+  --color-signal-foreground: var(--signal-foreground);
+  --color-paper: var(--paper);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,72 +55,86 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Volition brand — mid olive on a soft, neutral greige. The beige is pulled
+     off yellow toward a cooler stone; the olive is lifted out of dark green so
+     buttons read as a living olive, not forest. Background beige, actions olive. */
+  --background: #e7e3d7;
+  --foreground: #2c2e23;
+  --paper: #f4f1e9;
+  --card: #f6f3ec;
+  --card-foreground: #2c2e23;
+  --popover: #f6f3ec;
+  --popover-foreground: #2c2e23;
+  --primary: #737f47;
+  --primary-foreground: #f6f4ea;
+  --brand: #737f47;
+  --brand-foreground: #f6f4ea;
+  --signal: #8f7d33;
+  --signal-foreground: #ffffff;
+  --secondary: #ddd8ca;
+  --secondary-foreground: #363827;
+  --muted: #e1ddce;
+  --muted-foreground: #6c6c58;
+  --accent: #dfddcb;
+  --accent-foreground: #737f47;
+  --destructive: #a33327;
+  --border: #d4cebd;
+  --input: #c8c1ad;
+  --ring: #737f47;
+  --chart-1: #737f47;
+  --chart-2: #b0913f;
+  --chart-3: #93a05c;
+  --chart-4: #a3853a;
+  --chart-5: #4c5730;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #e2ddcf;
+  --sidebar-foreground: #2c2e23;
+  --sidebar-primary: #737f47;
+  --sidebar-primary-foreground: #f6f4ea;
+  --sidebar-accent: #dfddcb;
+  --sidebar-accent-foreground: #737f47;
+  --sidebar-border: #d4cebd;
+  --sidebar-ring: #737f47;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Night: deep olive ground, lifted olive, bright brass signal. */
+  --background: #23261a;
+  --foreground: #edead9;
+  --paper: #2f321f;
+  --card: #2f321f;
+  --card-foreground: #edead9;
+  --popover: #2f321f;
+  --popover-foreground: #edead9;
+  --primary: #a6b36a;
+  --primary-foreground: #1b1d12;
+  --brand: #a6b36a;
+  --brand-foreground: #1b1d12;
+  --signal: #d8c070;
+  --signal-foreground: #1a1505;
+  --secondary: #333720;
+  --secondary-foreground: #edead9;
+  --muted: #2c2f1d;
+  --muted-foreground: #a8a488;
+  --accent: #3a3e22;
+  --accent-foreground: #d8c070;
+  --destructive: #f0685e;
+  --border: #ffffff1f;
+  --input: #ffffff26;
+  --ring: #a6b36a;
+  --chart-1: #a6b36a;
+  --chart-2: #d8c070;
+  --chart-3: #b9c58a;
+  --chart-4: #b0913f;
+  --chart-5: #6b7a3f;
+  --sidebar: #262919;
+  --sidebar-foreground: #edead9;
+  --sidebar-primary: #a6b36a;
+  --sidebar-primary-foreground: #1b1d12;
+  --sidebar-accent: #3a3e22;
+  --sidebar-accent-foreground: #d8c070;
+  --sidebar-border: #ffffff1f;
+  --sidebar-ring: #a6b36a;
 }
 
 @layer base {
@@ -123,8 +143,67 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "cv05" 1, "ss01" 1;
   }
   html {
     @apply font-sans;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--brand) 22%, transparent);
+  }
+  /* Tabular figures wherever numbers must line up (costs, dates, scores). */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* The signature motif: a sourced line. Every fact that carries a citation
+     wears this monospaced, traceable chip — "citation or no signal" made
+     visible. Used across landing, feed, and detail pages. */
+  .citation {
+    @apply inline-flex items-center gap-1 rounded-full border border-border
+      bg-paper px-2 py-0.5 font-mono text-[11px] leading-none text-muted-foreground
+      transition-colors;
+  }
+  a.citation:hover {
+    @apply border-brand/40 text-brand;
+  }
+  /* A hairline ledger rule — the dossier's structural divider. */
+  .ledger-rule {
+    height: 1px;
+    background-image: repeating-linear-gradient(
+      to right,
+      var(--border) 0,
+      var(--border) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+  }
+  /* Small uppercase label used for section eyebrows and field keys. */
+  .eyebrow {
+    @apply font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-signal;
+  }
+}
+
+@layer utilities {
+  /* Orchestrated hero entrance — one quiet rise, staggered by delay. */
+  @keyframes dossier-rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .rise {
+    animation: dossier-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rise {
+      animation: none;
+    }
   }
 }

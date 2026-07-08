@@ -1,21 +1,34 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// The Evidence Dossier type system:
+//  · Fraunces  — warm literary serif, the human/mission voice (display)
+//  · Plex Sans — humanist grotesque, credible workhorse (body)
+//  · Plex Mono — the machine-evidence voice: citations, costs, the ledger
+const fraunces = Fraunces({
+  variable: "--font-display",
   subsets: ["latin"],
+  axes: ["opsz", "SOFT"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
-  title: "Volition — insights team on demand",
+  title: "Volition — find the rooms where your donors already are",
   description:
-    "Grounded, cited insights for any org — with the true cost of every answer printed on the answer.",
+    "Fundraising-event intelligence for nonprofits: matched conferences, donor signals from 990 filings, every claim cited and every cost on the receipt.",
+  icons: { icon: "/volition-logo.png" },
 };
 
 export default function RootLayout({
@@ -26,7 +39,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

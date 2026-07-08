@@ -3,7 +3,7 @@
 // events are merged into the shared corpus — every scrape any user triggers
 // enriches the table for every future user (the moat).
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { DonorSignal, Event, SourcedClaim } from "@/types";
+import type { DonorSignal, Event, EventMatch, SourcedClaim } from "@/types";
 import {
   contactsToJson,
   donorSignalsToJson,
@@ -22,6 +22,40 @@ export async function loadEventCorpus(admin: SupabaseClient): Promise<Event[]> {
   const { data, error } = await admin.from("events").select("*");
   if (error) throw error;
   return ((data ?? []) as EventRow[]).map(rowToEvent);
+}
+
+export interface MatchWithEvent {
+  match: EventMatch;
+  event: Event;
+}
+
+/**
+ * The feed: a profile's non-dismissed matches, best-scored first, each joined
+ * to its event. User-scoped client — the "matches: owner select" RLS policy
+ * keeps orgs to their own matches.
+ */
+export async function loadMatchesForProfile(
+  client: SupabaseClient,
+  profileId: string,
+): Promise<MatchWithEvent[]> {
+  const { data, error } = await client
+    .from("event_matches")
+    .select("*, event:events(*)")
+    .eq("profile_id", profileId)
+    .neq("status", "dismissed")
+    .order("match_score", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as (EventMatchRow & { event: EventRow | null })[]).flatMap(
+    ({ event, ...matchRow }) => {
+      if (!event) return [];
+      return [
+        {
+          match: rowToEventMatch(matchRow as EventMatchRow),
+          event: rowToEvent(event as EventRow),
+        },
+      ];
+    },
+  );
 }
 
 /**

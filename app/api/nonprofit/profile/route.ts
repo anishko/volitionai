@@ -1,15 +1,24 @@
 // POST /api/nonprofit/profile — save onboarding form, run LOCAL extraction,
-// store profile + cost events. GET — current user's profile.
+// store profile + cost events, then populate the events feed: seed-floor
+// matches synchronously (ADR-0005: /events is never empty on first load) and
+// the live match run in the background. GET — current user's profile.
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { persistCostEvents } from "@/lib/supabase/costs";
 import { OnboardingFormSchema } from "@/lib/nonprofit/onboarding-schema";
 import { extractNonprofitProfile } from "@/lib/nonprofit/extract";
 import { rowToNonprofitProfile, type NonprofitProfileRow } from "@/lib/nonprofit/profile-row";
+import { runSeedFloor } from "@/lib/events/floor";
+import { createMatchRun, runLiveMatchTracked, updateMatchRun } from "@/lib/events/runs";
 import { CostMeter, newRunId } from "@/lib/ai/cost";
+import type { MatchRun } from "@/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Extraction is quick, but the background live run scheduled via after()
+// shares this budget on serverless hosts.
+export const maxDuration = 180;
 
 function isMissingProfileGeographyColumn(error: unknown): boolean {
   const message =
@@ -148,10 +157,47 @@ export async function POST(req: NextRequest) {
       entityId: profile.id,
     });
 
+    // Seed floor (ADR-0005): populate the feed from the corpus right now, $0,
+    // so the user lands on /events with cards already there. A floor failure
+    // must not fail onboarding - the live run can still populate the feed.
+    const admin = createSupabaseAdminClient();
+    let matchRun: MatchRun | null = null;
+    let floorMatches = 0;
+    try {
+      const floor = await runSeedFloor(admin, profile);
+      floorMatches = floor.matches.length;
+      matchRun = await createMatchRun(admin, profile.id, "floor_ready");
+      if (floor.relaxed) {
+        await updateMatchRun(admin, matchRun.id, {
+          notices: [
+            "Not enough exact matches; results were broadened to related causes or virtual events (labeled by tier).",
+          ],
+        });
+      }
+    } catch (err) {
+      console.error("[/api/nonprofit/profile POST] seed floor failed:", err);
+      matchRun = await createMatchRun(admin, profile.id, "failed").catch(() => null);
+      if (matchRun) {
+        await updateMatchRun(admin, matchRun.id, {
+          error: "Initial matching failed; retry from the events page.",
+          finished: true,
+        }).catch(() => {});
+      }
+    }
+
+    // Live run in the background: the response returns immediately with the
+    // floor in place; the feed polls match_runs and merges live results.
+    if (matchRun && matchRun.status !== "failed") {
+      const runId = matchRun.id;
+      after(() => runLiveMatchTracked(admin, profile, runId));
+    }
+
     return NextResponse.json({
       profile,
       receipt: meter.receipt(),
       costsPersisted: persisted,
+      floorMatches,
+      matchRunId: matchRun?.id ?? null,
     });
   } catch (err) {
     console.error("[/api/nonprofit/profile POST]", err);

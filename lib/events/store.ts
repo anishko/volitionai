@@ -3,7 +3,7 @@
 // events are merged into the shared corpus — every scrape any user triggers
 // enriches the table for every future user (the moat).
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { DonorSignal, Event, SourcedClaim } from "@/types";
+import type { DonorSignal, Event, MatchTier, SourcedClaim } from "@/types";
 import {
   contactsToJson,
   donorSignalsToJson,
@@ -211,6 +211,7 @@ export async function writeDonorSignals(
 export interface MatchWrite {
   eventId: string;
   matchScore: number;
+  matchTier: MatchTier;
   whyAttend: string;
   donorSignalCallout?: string;
   evidence: SourcedClaim[];
@@ -229,6 +230,7 @@ export async function upsertMatches(
     profile_id: profileId,
     event_id: w.eventId,
     match_score: w.matchScore,
+    match_tier: w.matchTier,
     why_attend: w.whyAttend,
     donor_signal_callout: w.donorSignalCallout ?? null,
     evidence: evidenceToJson(w.evidence),

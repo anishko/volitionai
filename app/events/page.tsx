@@ -5,6 +5,7 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { Badge } from "@/components/ui/badge";
 import { EventsFeed } from "@/components/events-feed";
 import { loadEventFeed } from "@/lib/events/feed";
+import { latestMatchRun } from "@/lib/events/runs";
 
 // Session + profile checks must run per-request, never at build time.
 export const dynamic = "force-dynamic";
@@ -28,7 +29,10 @@ export default async function EventsPage() {
   const extracted = profile.extractedProfile as
     | { missionSummary?: string; causeKeywords?: string[]; eventSearchHints?: string[] }
     | undefined;
-  const initialItems = await loadEventFeed(supabase, profile.id);
+  const [initialItems, initialRun] = await Promise.all([
+    loadEventFeed(supabase, profile.id),
+    latestMatchRun(supabase, profile.id),
+  ]);
 
   return (
     <div className="min-h-screen w-full bg-zinc-50 px-4 py-8 dark:bg-black sm:px-8">
@@ -59,7 +63,7 @@ export default async function EventsPage() {
           <SignOutButton />
         </header>
 
-        <EventsFeed profileId={profile.id} initialItems={initialItems} />
+        <EventsFeed profileId={profile.id} initialItems={initialItems} initialRun={initialRun} />
       </div>
     </div>
   );

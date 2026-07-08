@@ -3,6 +3,8 @@
 // The 8-field onboarding form (issue #3). Selection inputs are chip toggles —
 // same idiom as the demo-persona chips on the home page — with native
 // semantics preserved via role/aria attributes.
+// Pass `mode="edit"` with `initialValues` and `onSuccess` to wire it to
+// PATCH /api/nonprofit/profile instead of POST (used by /profile, issue #10).
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,7 @@ import {
   DONOR_TYPES,
   PRIMARY_GOALS,
   OnboardingFormSchema,
+  type OnboardingForm,
 } from "@/lib/nonprofit/onboarding-schema";
 import { UsCityPicker, UsCitiesMultiPicker } from "@/components/us-city-picker";
 import { RegionMultiPicker } from "@/components/region-multi-picker";
@@ -91,20 +94,36 @@ function Field({
   );
 }
 
-export function OnboardingForm() {
+type Props =
+  | { mode?: "create"; initialValues?: undefined; onSuccess?: undefined }
+  | { mode: "edit"; initialValues: Partial<OnboardingForm>; onSuccess: () => void };
+
+export function OnboardingForm({ mode = "create", initialValues, onSuccess }: Props) {
   const router = useRouter();
-  const [orgName, setOrgName] = useState("");
-  const [website, setWebsite] = useState("");
-  const [causeAreas, setCauseAreas] = useState<string[]>([]);
-  const [headquarters, setHeadquarters] = useState("");
-  const [citiesOfInterest, setCitiesOfInterest] = useState<string[]>([]);
-  const [regionsOfInterest, setRegionsOfInterest] = useState<string[]>([]);
-  const [orgSize, setOrgSize] = useState<string[]>([]);
-  const [currentDonorMix, setCurrentDonorMix] = useState<string[]>([]);
-  const [targetDonorType, setTargetDonorType] = useState<string[]>([]);
-  const [primaryGoal, setPrimaryGoal] = useState<string[]>([]);
-  const [openEndedNotes, setOpenEndedNotes] = useState("");
-  const [causeSubTags, setCauseSubTags] = useState<string[]>([]);
+  const [orgName, setOrgName] = useState(initialValues?.orgName ?? "");
+  const [website, setWebsite] = useState(initialValues?.website ?? "");
+  const [causeAreas, setCauseAreas] = useState<string[]>(initialValues?.causeAreas ?? []);
+  const [headquarters, setHeadquarters] = useState(initialValues?.headquarters ?? "");
+  const [citiesOfInterest, setCitiesOfInterest] = useState<string[]>(
+    initialValues?.citiesOfInterest ?? [],
+  );
+  const [regionsOfInterest, setRegionsOfInterest] = useState<string[]>(
+    initialValues?.regionsOfInterest ?? [],
+  );
+  const [orgSize, setOrgSize] = useState<string[]>(
+    initialValues?.orgSize ? [initialValues.orgSize] : [],
+  );
+  const [currentDonorMix, setCurrentDonorMix] = useState<string[]>(
+    initialValues?.currentDonorMix ?? [],
+  );
+  const [targetDonorType, setTargetDonorType] = useState<string[]>(
+    initialValues?.targetDonorType ?? [],
+  );
+  const [primaryGoal, setPrimaryGoal] = useState<string[]>(
+    initialValues?.primaryGoal ? [initialValues.primaryGoal] : [],
+  );
+  const [openEndedNotes, setOpenEndedNotes] = useState(initialValues?.openEndedNotes ?? "");
+  const [causeSubTags, setCauseSubTags] = useState<string[]>(initialValues?.causeSubTags ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,23 +151,34 @@ export function OnboardingForm() {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/nonprofit/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed.data),
-      });
-      const data = await res.json();
-      if (res.status === 409) {
-        router.push("/events");
-        return;
+      if (mode === "edit") {
+        const res = await fetch("/api/nonprofit/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(parsed.data),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error ?? "Failed to update profile");
+        onSuccess?.();
+      } else {
+        const res = await fetch("/api/nonprofit/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(parsed.data),
+        });
+        const data = await res.json();
+        if (res.status === 409) {
+          router.push("/events");
+          return;
+        }
+        if (!res.ok) throw new Error(data?.error ?? "Failed to save profile");
+        const notice = data.floorError
+          ? "seed-failed"
+          : data.floorMatches === 0
+            ? "seed-empty"
+            : null;
+        router.push(notice ? `/events?notice=${notice}` : "/events");
       }
-      if (!res.ok) throw new Error(data?.error ?? "Failed to save profile");
-      const notice = data.floorError
-        ? "seed-failed"
-        : data.floorMatches === 0
-          ? "seed-empty"
-          : null;
-      router.push(notice ? `/events?notice=${notice}` : "/events");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
       setSubmitting(false);
@@ -293,11 +323,17 @@ export function OnboardingForm() {
 
       <div className="space-y-2">
         <Button onClick={submit} disabled={submitting} className="w-full" size="lg">
-          {submitting ? "Building your profile locally…" : "Build my profile"}
+          {submitting
+            ? mode === "edit"
+              ? "Updating profile locally…"
+              : "Building your profile locally…"
+            : mode === "edit"
+              ? "Save changes"
+              : "Build my profile"}
         </Button>
         <p className="text-center text-xs text-zinc-400">
           Profile extraction runs on a local model. Your answers become a
-          structured profile; we don’t train on them.
+          structured profile; we don't train on them.
         </p>
         {error && <p className="text-center text-sm text-red-600">{error}</p>}
       </div>

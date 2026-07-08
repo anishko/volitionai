@@ -2,12 +2,13 @@
 // store profile + cost events, then populate the events feed: seed-floor
 // matches synchronously (ADR-0005: /events is never empty on first load) and
 // the live match run in the background. GET — current user's profile.
+// PATCH — update profile fields, re-run extraction, emit cost event.
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { persistCostEvents } from "@/lib/supabase/costs";
-import { OnboardingFormSchema } from "@/lib/nonprofit/onboarding-schema";
+import { OnboardingFormSchema, PartialOnboardingSchema } from "@/lib/nonprofit/onboarding-schema";
 import { extractNonprofitProfile } from "@/lib/nonprofit/extract";
 import { scrapeWebsiteSummary } from "@/lib/nonprofit/website";
 import { rowToNonprofitProfile, type NonprofitProfileRow } from "@/lib/nonprofit/profile-row";
@@ -216,6 +217,133 @@ export async function POST(req: NextRequest) {
     console.error("[/api/nonprofit/profile POST]", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to save profile." },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+    }
+
+    const parsed = PartialOnboardingSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid form data." },
+        { status: 400 },
+      );
+    }
+    const patch = parsed.data;
+
+    const { data: existingRow } = await supabase
+      .from("nonprofit_profiles")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!existingRow) {
+      return NextResponse.json({ error: "No profile to update." }, { status: 404 });
+    }
+
+    const existing = rowToNonprofitProfile(existingRow as NonprofitProfileRow);
+
+    // Merge patch on top of stored values so extractNonprofitProfile always
+    // receives a complete OnboardingForm even when the patch is partial.
+    const parsed2 = OnboardingFormSchema.safeParse({
+      orgName: patch.orgName ?? existing.orgName,
+      website: patch.website ?? existing.website,
+      causeAreas: patch.causeAreas ?? existing.causeAreas,
+      geographyFocus: patch.geographyFocus ?? existing.geographyFocus ?? "national",
+      geographyDetail: patch.geographyDetail ?? existing.geographyDetail,
+      headquarters: patch.headquarters ?? existing.headquarters,
+      citiesOfInterest: patch.citiesOfInterest ?? existing.citiesOfInterest ?? [],
+      regionsOfInterest: patch.regionsOfInterest ?? existing.regionsOfInterest ?? [],
+      orgSize: patch.orgSize ?? existing.orgSize,
+      currentDonorMix: patch.currentDonorMix ?? existing.currentDonorMix ?? [],
+      targetDonorType: patch.targetDonorType ?? existing.targetDonorType ?? [],
+      primaryGoal: patch.primaryGoal ?? existing.primaryGoal,
+      openEndedNotes: patch.openEndedNotes ?? existing.openEndedNotes,
+      causeSubTags: patch.causeSubTags ?? [],
+      qualitativeSignals: patch.qualitativeSignals,
+    });
+    if (!parsed2.success) {
+      return NextResponse.json(
+        { error: parsed2.error.issues[0]?.message ?? "Merged form data is invalid." },
+        { status: 400 },
+      );
+    }
+    const form = parsed2.data;
+
+    const meter = new CostMeter(newRunId());
+
+    const extracted = await extractNonprofitProfile(meter, form, undefined);
+
+    // Build update object from only the fields present in the partial patch.
+    // We use `patch` (not the merged `form`) to avoid overwriting stored fields
+    // that were absent from the request body.
+    const baseUpdate: Record<string, unknown> = { extracted_profile: extracted };
+    if (patch.orgName !== undefined) baseUpdate.org_name = form.orgName;
+    if (patch.website !== undefined) baseUpdate.website = form.website ?? null;
+    if (patch.causeAreas !== undefined) baseUpdate.cause_areas = form.causeAreas;
+    if (patch.geographyFocus !== undefined) baseUpdate.geography_focus = form.geographyFocus;
+    if (patch.geographyDetail !== undefined) baseUpdate.geography_detail = form.geographyDetail ?? null;
+    if (patch.orgSize !== undefined) baseUpdate.org_size = form.orgSize;
+    if (patch.currentDonorMix !== undefined) baseUpdate.current_donor_mix = form.currentDonorMix;
+    if (patch.targetDonorType !== undefined) baseUpdate.target_donor_type = form.targetDonorType;
+    if (patch.primaryGoal !== undefined) baseUpdate.primary_goal = form.primaryGoal;
+    if (patch.openEndedNotes !== undefined) baseUpdate.open_ended_notes = form.openEndedNotes ?? null;
+    if (patch.causeSubTags !== undefined) baseUpdate.cause_sub_tags = form.causeSubTags;
+    if (patch.qualitativeSignals !== undefined)
+      baseUpdate.qualitative_signals = form.qualitativeSignals ?? null;
+
+    const fullUpdate = { ...baseUpdate };
+    const hasGeographyFields =
+      patch.headquarters !== undefined ||
+      patch.citiesOfInterest !== undefined ||
+      patch.regionsOfInterest !== undefined;
+    if (patch.headquarters !== undefined) fullUpdate.headquarters = form.headquarters ?? null;
+    if (patch.citiesOfInterest !== undefined) fullUpdate.cities_of_interest = form.citiesOfInterest;
+    if (patch.regionsOfInterest !== undefined) fullUpdate.regions_of_interest = form.regionsOfInterest;
+
+    let { data: row, error: updateError } = await supabase
+      .from("nonprofit_profiles")
+      .update(fullUpdate)
+      .eq("user_id", user.id)
+      .select("*")
+      .single();
+
+    if (updateError && hasGeographyFields && isMissingProfileGeographyColumn(updateError)) {
+      console.warn(
+        "[/api/nonprofit/profile PATCH] geography columns not yet applied; updating without them.",
+      );
+      const retry = await supabase
+        .from("nonprofit_profiles")
+        .update(baseUpdate)
+        .eq("user_id", user.id)
+        .select("*")
+        .single();
+      row = retry.data;
+      updateError = retry.error;
+    }
+    if (updateError) throw updateError;
+
+    const profile = rowToNonprofitProfile(row as NonprofitProfileRow);
+    const { persisted } = await persistCostEvents({
+      events: meter.events,
+      runType: "profile_extraction",
+      entityId: profile.id,
+    });
+
+    return NextResponse.json({ profile, receipt: meter.receipt(), costsPersisted: persisted });
+  } catch (err) {
+    console.error("[/api/nonprofit/profile PATCH]", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to update profile." },
       { status: 500 },
     );
   }

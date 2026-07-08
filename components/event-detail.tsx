@@ -1,9 +1,9 @@
-// Event detail view (issue #6). Renders the five sections a nonprofit needs to
-// decide on an event — logistics, participation options, organizer contacts,
-// known participants, donor signals — from the shared events corpus. Every
-// sourced field links back to its citation; empty sections degrade to a quiet
-// placeholder rather than a broken layout, and donor signals only appear when
-// the corpus actually carries them.
+// Event detail view (issue #6), styled in the Evidence Dossier system. Renders
+// the five sections a nonprofit needs to decide on an event — logistics,
+// participation options, organizer contacts, known participants, donor signals
+// — from the shared events corpus. Every sourced field wears a citation chip;
+// empty sections degrade to a quiet placeholder rather than a broken layout,
+// and donor signals only appear when the corpus actually carries them.
 import Link from "next/link";
 import type {
   DonorSignal,
@@ -48,15 +48,11 @@ function locationLine(event: Event): string {
   return parts.length > 0 ? parts.join(", ") : "Location to be announced";
 }
 
-function SourceLink({ href, label = "source" }: { href: string; label?: string }) {
+// The signature motif — a traceable, monospaced citation chip.
+function Cite({ href, label = "source" }: { href: string; label?: string }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-xs text-blue-600 underline underline-offset-2 dark:text-blue-400"
-    >
-      {label}
+    <a href={href} target="_blank" rel="noopener noreferrer" className="citation">
+      ↗ {label}
     </a>
   );
 }
@@ -69,17 +65,15 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-      <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">
-        {title}
-      </h2>
+    <section className="rounded-2xl border border-border bg-card p-6">
+      <h2 className="eyebrow mb-4">{title}</h2>
       {children}
     </section>
   );
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-zinc-400 dark:text-zinc-500">{children}</p>;
+  return <p className="text-sm text-muted-foreground">{children}</p>;
 }
 
 function Logistics({ event }: { event: Event }) {
@@ -97,7 +91,7 @@ function Logistics({ event }: { event: Event }) {
           href={event.website}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-600 underline underline-offset-2 dark:text-blue-400"
+          className="text-brand underline underline-offset-2 hover:opacity-80"
         >
           {event.website}
         </a>
@@ -112,12 +106,10 @@ function Logistics({ event }: { event: Event }) {
       <dl className="grid grid-cols-[7rem_1fr] gap-y-3 text-sm">
         {rows.map((r) => (
           <div key={r.label} className="contents">
-            <dt className="font-medium text-zinc-500 dark:text-zinc-400">
+            <dt className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
               {r.label}
             </dt>
-            <dd className="break-words text-zinc-900 dark:text-zinc-100">
-              {r.value}
-            </dd>
+            <dd className="break-words text-foreground">{r.value}</dd>
           </div>
         ))}
       </dl>
@@ -129,7 +121,7 @@ function Logistics({ event }: { event: Event }) {
           <ul className="space-y-1 text-sm">
             {extraSources.map((url) => (
               <li key={url}>
-                <SourceLink href={url} label={url} />
+                <Cite href={url} label={url} />
               </li>
             ))}
           </ul>
@@ -141,22 +133,20 @@ function Logistics({ event }: { event: Event }) {
 
 function TierCard({ tier }: { tier: EventParticipationTier }) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="text-sm font-semibold capitalize text-zinc-900 dark:text-zinc-50">
+    <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/50 p-4">
+      <p className="font-display text-sm font-semibold capitalize text-foreground">
         {tier.tier}
       </p>
-      <p className="text-sm text-zinc-700 dark:text-zinc-200">
-        <span className="text-zinc-500 dark:text-zinc-400">Cost: </span>
-        {tier.cost ?? "Not published"}
+      <p className="text-sm text-foreground">
+        <span className="text-muted-foreground">Cost: </span>
+        <span className="tabular">{tier.cost ?? "Not published"}</span>
       </p>
-      <p className="text-sm text-zinc-700 dark:text-zinc-200">
-        <span className="text-zinc-500 dark:text-zinc-400">Deadline: </span>
-        {formatDate(tier.deadline) ?? "Deadline unknown"}
+      <p className="text-sm text-foreground">
+        <span className="text-muted-foreground">Deadline: </span>
+        <span className="tabular">{formatDate(tier.deadline) ?? "Deadline unknown"}</span>
       </p>
       {tier.instructions && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-300">
-          {tier.instructions}
-        </p>
+        <p className="text-sm text-muted-foreground">{tier.instructions}</p>
       )}
       <div className="mt-auto flex items-center gap-3 pt-1">
         {tier.applyUrl ? (
@@ -164,16 +154,14 @@ function TierCard({ tier }: { tier: EventParticipationTier }) {
             href={tier.applyUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-medium text-blue-600 underline underline-offset-2 dark:text-blue-400"
+            className="text-sm font-medium text-brand underline underline-offset-2 hover:opacity-80"
           >
             Apply →
           </a>
         ) : (
-          <span className="text-sm text-zinc-400 dark:text-zinc-500">
-            No application link
-          </span>
+          <span className="text-sm text-muted-foreground">No application link</span>
         )}
-        <SourceLink href={tier.sourceUrl} />
+        <Cite href={tier.sourceUrl} />
       </div>
     </div>
   );
@@ -203,32 +191,18 @@ function Contacts({ contacts }: { contacts: EventOrganizerContact[] }) {
           {contacts.map((c, i) => (
             <li key={`${c.name}-${i}`} className="text-sm">
               <div className="flex flex-wrap items-baseline gap-x-2">
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                  {c.name}
-                </span>
-                {c.role && (
-                  <span className="text-zinc-500 dark:text-zinc-400">
-                    {c.role}
-                  </span>
-                )}
-                <SourceLink href={c.sourceUrl} />
+                <span className="font-medium text-foreground">{c.name}</span>
+                {c.role && <span className="text-muted-foreground">{c.role}</span>}
+                <Cite href={c.sourceUrl} />
               </div>
-              <div className="flex flex-wrap gap-x-3 text-zinc-600 dark:text-zinc-300">
+              <div className="flex flex-wrap gap-x-3 text-muted-foreground">
                 {c.email && (
-                  <a
-                    href={`mailto:${c.email}`}
-                    className="underline underline-offset-2"
-                  >
+                  <a href={`mailto:${c.email}`} className="underline underline-offset-2 hover:text-foreground">
                     {c.email}
                   </a>
                 )}
                 {c.linkedinUrl && (
-                  <a
-                    href={c.linkedinUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2"
-                  >
+                  <a href={c.linkedinUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">
                     LinkedIn
                   </a>
                 )}
@@ -254,23 +228,21 @@ function Participants({
     <Section title="Known participants">
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-400">
+          <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
             Speakers
           </p>
           {speakers.length > 0 ? (
             <ul className="space-y-2">
               {speakers.map((s, i) => (
                 <li key={`${s.name}-${i}`} className="text-sm">
-                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                    {s.name}
-                  </span>
+                  <span className="font-medium text-foreground">{s.name}</span>
                   {(s.title || s.org) && (
-                    <span className="text-zinc-500 dark:text-zinc-400">
+                    <span className="text-muted-foreground">
                       {" — "}
                       {[s.title, s.org].filter(Boolean).join(", ")}
                     </span>
                   )}{" "}
-                  <SourceLink href={s.sourceUrl} />
+                  <Cite href={s.sourceUrl} />
                 </li>
               ))}
             </ul>
@@ -279,23 +251,21 @@ function Participants({
           )}
         </div>
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-400">
+          <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
             Sponsors
           </p>
           {sponsors.length > 0 ? (
             <ul className="space-y-2">
               {sponsors.map((s, i) => (
                 <li key={`${s.name}-${i}`} className="text-sm">
-                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                    {s.name}
-                  </span>
+                  <span className="font-medium text-foreground">{s.name}</span>
                   {s.csrContact && (
-                    <span className="text-zinc-500 dark:text-zinc-400">
+                    <span className="text-muted-foreground">
                       {" — "}
                       {s.csrContact}
                     </span>
                   )}{" "}
-                  <SourceLink href={s.sourceUrl} />
+                  <Cite href={s.sourceUrl} />
                 </li>
               ))}
             </ul>
@@ -315,19 +285,15 @@ function DonorSignals({ signals }: { signals: DonorSignal[] }) {
         {signals.map((d, i) => (
           <li key={`${d.foundationName}-${i}`} className="text-sm">
             <div className="flex flex-wrap items-baseline gap-x-2">
-              <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                {d.foundationName}
-              </span>
+              <span className="font-medium text-foreground">{d.foundationName}</span>
               {d.focusArea && (
-                <span className="text-zinc-500 dark:text-zinc-400">
-                  {d.focusArea}
-                </span>
+                <span className="text-muted-foreground">{d.focusArea}</span>
               )}
             </div>
-            <div className="flex flex-wrap gap-x-3 text-zinc-600 dark:text-zinc-300">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
               {d.programOfficer && <span>{d.programOfficer}</span>}
-              <SourceLink href={d.filingUrl} label="990 filing" />
-              <SourceLink href={d.eventSourceUrl} label="event page" />
+              <Cite href={d.filingUrl} label="990 filing" />
+              <Cite href={d.eventSourceUrl} label="event page" />
             </div>
           </li>
         ))}
@@ -338,24 +304,24 @@ function DonorSignals({ signals }: { signals: DonorSignal[] }) {
 
 export function EventDetail({ event }: { event: Event }) {
   return (
-    <div className="min-h-screen w-full bg-zinc-50 px-4 py-10 dark:bg-black sm:px-8">
+    <div className="min-h-screen w-full bg-background px-4 py-10 sm:px-8">
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
           <Link
             href="/events"
-            className="text-sm text-zinc-500 underline-offset-2 hover:underline dark:text-zinc-400"
+            className="font-mono text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
             ← Back to events
           </Link>
-          <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="mt-3 font-display text-4xl tracking-tight text-foreground">
             {event.name}
           </h1>
           {event.causeAreaTags.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div className="mt-3 flex flex-wrap gap-1.5">
               {event.causeAreaTags.map((tag) => (
                 <span
                   key={tag}
-                  className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300"
+                  className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
                 >
                   {tag}
                 </span>

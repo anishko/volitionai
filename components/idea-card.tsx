@@ -57,7 +57,7 @@ export function IdeaCardView({
         </Badge>
       </div>
 
-      <h3 className="text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+      <h3 className="text-lg leading-snug text-zinc-900 dark:text-zinc-50">
         {card.idea}
       </h3>
 

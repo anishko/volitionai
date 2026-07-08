@@ -59,7 +59,7 @@ export default async function EventsPage({
             <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
               Volition · Events
             </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            <h1 className="mt-1 text-3xl tracking-tight text-zinc-900 dark:text-zinc-50">
               Events for {profile.orgName}
             </h1>
             {extracted?.missionSummary && (

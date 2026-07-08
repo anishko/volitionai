@@ -1,18 +1,20 @@
-// The event-matching orchestrator (issue #4). PLAN → SEARCH → SCRAPE →
-// ENRICH (990) → FILTER (rules) → EXPLAIN (cloud) → SCORE + STORE.
-// Every stage emits CostEvents into one meter; the caller persists them with
-// run_type "event_match". Live stages degrade gracefully: if Tavily or
-// Firecrawl is down, seed-corpus matches still come back with a notice.
+// Event-matching orchestrator (ADR-0003): PLAN → SOURCE → FILTER → finalists →
+// UNIFORM scrape → ENRICH → EXPLAIN → STORE.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CostMeter, newRunId } from "@/lib/ai/cost";
-import type { DonorSignal, Event, EventMatch, NonprofitProfile } from "@/types";
+import type { DonorSignal, Event, EventMatch, MatchTier, NonprofitProfile } from "@/types";
 import type { CostEvent, CostReceipt } from "@/types/cost";
+import { buildCandidatePool } from "./candidates";
+import { finalistsToScrape } from "./finalists";
 import { planEventQueries } from "./plan";
-import { searchEventCandidates, type EventSearchCandidate } from "./search";
-import { scrapeEventCandidates } from "./scrape";
+import { provisionalToScraped, rebuildEventPool } from "./pool";
+import { scrapeEventCandidates, MAX_SCRAPE_PAGES_PER_RUN } from "./scrape";
 import { enrichDonorSignals } from "./enrich";
-import { filterCandidates, scoreEvent } from "./filter";
+import { filterCandidates, scoreEvent, type TieredEvent } from "./filter";
 import { explainMatches } from "./explain";
+import { eventNeedsScrape } from "./staleness";
+import { validateEventFields } from "./validate";
+import { fetchSourceCandidates } from "./sources";
 import {
   loadEventCorpus,
   upsertDiscoveredEvents,
@@ -20,10 +22,7 @@ import {
   writeDonorSignals,
 } from "./store";
 
-// Finalists sent to the cloud explainer (issue: top 10-20).
 const FINALIST_COUNT = 12;
-// Firecrawl pages per run: default well under the 15-page hard cap
-// (docs/DATA_SOURCES.md: "use sparingly, top 3-5 URLs per run").
 const SCRAPE_PAGES_DEFAULT = 5;
 
 export interface EventMatchRunMeta {
@@ -37,6 +36,9 @@ export interface EventMatchRunMeta {
   finalists: number;
   donorSignalEvents: number;
   cloudModel: string;
+  matchesDroppedForNoCitation: number;
+  budgetStops: string[];
+  deepestTier: MatchTier;
   notices: string[];
 }
 
@@ -47,41 +49,38 @@ export interface EventMatchRunResult {
   meta: EventMatchRunMeta;
 }
 
-function domainOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
-  } catch {
-    return url.toLowerCase();
-  }
+function isPast(event: Event, today: string): boolean {
+  const last = event.endDate ?? event.startDate;
+  return Boolean(last && last < today);
 }
 
 function selectFinalists(
   profile: NonprofitProfile,
-  events: Event[],
+  tiered: TieredEvent[],
   liveEventIds: Set<string>,
   signalsByEvent: Map<string, DonorSignal[]>,
-): Event[] {
-  const scored = events
-    .map((event) => ({
-      event,
-      score: scoreEvent(profile, event, signalsByEvent.get(event.id) ?? []),
+): TieredEvent[] {
+  const scored = tiered
+    .map((t) => ({
+      t,
+      score: scoreEvent(profile, t.event, signalsByEvent.get(t.event.id) ?? [], t.matchTier),
     }))
     .sort((a, b) => b.score - a.score);
-  const finalists = scored.slice(0, FINALIST_COUNT).map((f) => f.event);
+  const finalists = scored.slice(0, FINALIST_COUNT).map((f) => f.t);
 
-  const hasLive = finalists.some((event) => liveEventIds.has(event.id));
-  const bestLive = scored.find((f) => liveEventIds.has(f.event.id))?.event;
+  const hasLive = finalists.some((f) => liveEventIds.has(f.event.id));
+  const bestLive = scored.find((f) => liveEventIds.has(f.t.event.id))?.t;
   if (!hasLive && bestLive) {
     finalists[finalists.length === FINALIST_COUNT ? FINALIST_COUNT - 1 : finalists.length] = bestLive;
   }
 
-  const hasSeed = finalists.some((event) => event.isSeed);
-  const bestSeed = scored.find((f) => f.event.isSeed)?.event;
+  const hasSeed = finalists.some((f) => f.event.isSeed);
+  const bestSeed = scored.find((f) => f.t.event.isSeed)?.t;
   if (!hasSeed && bestSeed) {
     finalists[finalists.length === FINALIST_COUNT ? FINALIST_COUNT - 1 : finalists.length] = bestSeed;
   }
 
-  return Array.from(new Map(finalists.map((event) => [event.id, event])).values());
+  return Array.from(new Map(finalists.map((f) => [f.event.id, f])).values());
 }
 
 export async function runEventMatch(
@@ -91,11 +90,11 @@ export async function runEventMatch(
   const runId = newRunId();
   const meter = new CostMeter(runId);
   const notices: string[] = [];
+  const budgetStops: string[] = [];
+  const today = new Date().toISOString().slice(0, 10);
 
-  // Candidate set always starts from the shared corpus (seed + prior finds).
-  const corpus = await loadEventCorpus(admin);
+  let corpus = await loadEventCorpus(admin);
 
-  // 1. PLAN (local) — a planner failure only costs us live search, not the run.
   let queries: string[] = [];
   try {
     queries = (await planEventQueries(meter, profile)).queries;
@@ -104,58 +103,115 @@ export async function runEventMatch(
     console.warn("[events/run] planning failed:", err instanceof Error ? err.message : err);
   }
 
-  // 2. SEARCH (Tavily, capped) — same degradation contract.
-  let candidates: EventSearchCandidate[] = [];
-  if (queries.length > 0) {
-    try {
-      const search = await searchEventCandidates(meter, queries);
-      candidates = search.candidates;
-      if (search.searchesFailed > 0) {
-        notices.push(
-          `${search.searchesFailed} of ${search.searchesRun + search.searchesFailed} live searches failed; results may be partial.`,
-        );
-      }
-    } catch (err) {
-      notices.push("Live event search unavailable; matched against the event corpus only.");
-      console.warn("[events/run] search failed:", err instanceof Error ? err.message : err);
-    }
-  } else {
-    meter.tavily({ stage: "event_search", searches: 0, latencyMs: 0 });
+  let candidatesFound = 0;
+  let organizerUrls: Record<string, string> = {};
+  let poolEvents = corpus;
+  try {
+    const sourced = await fetchSourceCandidates(meter, profile, queries);
+    candidatesFound = sourced.candidates.length;
+    notices.push(...sourced.notices);
+    budgetStops.push(...sourced.budgetStops);
+    const pool = buildCandidatePool(corpus, sourced.candidates, profile);
+    organizerUrls = pool.organizerUrls;
+    poolEvents = pool.events;
+  } catch (err) {
+    notices.push("Live source discovery unavailable; matched against the event corpus only.");
+    console.warn("[events/run] source router failed:", err instanceof Error ? err.message : err);
   }
 
-  // Spend the scrape budget on unknown events first; known domains are
-  // already represented in the corpus and only need a staleness refresh.
-  const knownDomains = new Set(corpus.map((e) => domainOf(e.website)));
-  candidates.sort(
-    (a, b) => Number(knownDomains.has(domainOf(a.url))) - Number(knownDomains.has(domainOf(b.url))),
-  );
-
-  // 3. SCRAPE (Firecrawl + local extraction, capped).
-  const scrape = await scrapeEventCandidates(meter, candidates, SCRAPE_PAGES_DEFAULT);
-  if (scrape.skippedReason) notices.push(scrape.skippedReason);
-  if (scrape.pagesFailed > 0) {
-    notices.push(`${scrape.pagesFailed} event page(s) could not be scraped; results may be partial.`);
+  let allEvents = poolEvents.map(validateEventFields);
+  const preFilter = filterCandidates(profile, allEvents);
+  if (preFilter.relaxed) {
+    notices.push(
+      "Not enough exact matches; results were broadened to related causes or virtual events (labeled by tier).",
+    );
   }
 
-  // Store discovered events into the shared corpus (merge-or-insert).
+  const prelimFinalists = selectFinalists(profile, preFilter.kept, new Set(), new Map());
+
+  const freshStructured = prelimFinalists
+    .filter(
+      ({ event }) =>
+        event.id.startsWith("provisional:") && !eventNeedsScrape(event),
+    )
+    .map(({ event }) => provisionalToScraped(event));
+
   let discovered: Event[] = [];
   let inserted = 0;
   let merged = 0;
-  if (scrape.events.length > 0) {
-    const upserted = await upsertDiscoveredEvents(admin, scrape.events, corpus);
-    discovered = upserted.events;
-    inserted = upserted.inserted;
-    merged = upserted.merged;
+
+  if (freshStructured.length > 0) {
+    const upserted = await upsertDiscoveredEvents(admin, freshStructured, corpus, organizerUrls);
+    discovered.push(...upserted.events);
+    inserted += upserted.inserted;
+    merged += upserted.merged;
   }
 
-  // Candidate set = corpus + fresh versions of anything just scraped.
-  const refreshedIds = new Set(discovered.map((e) => e.id));
-  const allEvents = [...corpus.filter((e) => !refreshedIds.has(e.id)), ...discovered];
+  const scrapeTargets = finalistsToScrape(
+    prelimFinalists.map((f) => f.event),
+    SCRAPE_PAGES_DEFAULT,
+  );
+  const scrape = await scrapeEventCandidates(meter, scrapeTargets, SCRAPE_PAGES_DEFAULT);
+  if (scrape.skippedReason) notices.push(scrape.skippedReason);
+  if (scrape.stoppedAtBudget) {
+    const note = `Scraping stopped at the ${MAX_SCRAPE_PAGES_PER_RUN}-page deep-scrape page budget; some finalist pages were not scraped.`;
+    budgetStops.push(note);
+    notices.push(note);
+  }
+  if (scrape.pagesFailed > 0) {
+    notices.push(`${scrape.pagesFailed} finalist page(s) could not be scraped; results may be partial.`);
+  }
 
-  // 4. ENRICH (ProPublica 990) — free API, still metered.
+  if (scrape.events.length > 0) {
+    const upserted = await upsertDiscoveredEvents(admin, scrape.events, corpus, organizerUrls);
+    discovered.push(...upserted.events);
+    inserted += upserted.inserted;
+    merged += upserted.merged;
+  }
+
+  corpus = await loadEventCorpus(admin);
+  allEvents = rebuildEventPool(corpus, discovered, poolEvents).map(validateEventFields);
+
+  const filtered = filterCandidates(profile, allEvents);
+  const refreshedIds = new Set(discovered.map((e) => e.id));
+  const finalists = selectFinalists(
+    profile,
+    filtered.kept.filter((t) => !isPast(t.event, today)),
+    refreshedIds,
+    new Map(),
+  );
+
+  if (finalists.length === 0) {
+    notices.push("No upcoming events matched this profile, even with broadened criteria.");
+    return {
+      matches: [],
+      receipt: meter.receipt(),
+      costEvents: meter.events,
+      meta: {
+        runId,
+        queries,
+        candidatesFound,
+        pagesScraped: scrape.pagesScraped,
+        eventsDiscovered: inserted,
+        eventsMerged: merged,
+        corpusSize: allEvents.length,
+        finalists: 0,
+        donorSignalEvents: 0,
+        cloudModel: "",
+        matchesDroppedForNoCitation: 0,
+        budgetStops,
+        deepestTier: filtered.deepestTier,
+        notices,
+      },
+    };
+  }
+
   let signalsByEvent = new Map<string, DonorSignal[]>();
   try {
-    const enrichment = await enrichDonorSignals(meter, allEvents);
+    const enrichment = await enrichDonorSignals(
+      meter,
+      finalists.map((f) => f.event),
+    );
     signalsByEvent = enrichment.signalsByEvent;
     if (enrichment.lookupsFailed > 0) {
       notices.push("Some donor-signal lookups failed; donor signals may be incomplete.");
@@ -165,11 +221,9 @@ export async function runEventMatch(
     console.warn("[events/run] enrichment failed:", err instanceof Error ? err.message : err);
   }
 
-  // Persist fresh donor signals onto the events themselves (acceptance:
-  // donor_signals written even where the UI does not yet display them).
-  for (const event of allEvents) {
+  for (const { event } of finalists) {
     const signals = signalsByEvent.get(event.id);
-    if (!signals || signals.length === 0) continue;
+    if (!signals || signals.length === 0 || event.id.startsWith("provisional:")) continue;
     try {
       await writeDonorSignals(admin, event, signals);
     } catch (err) {
@@ -177,37 +231,9 @@ export async function runEventMatch(
     }
   }
 
-  // 5. FILTER (rules, before any cloud spend).
-  const filtered = filterCandidates(profile, allEvents);
-
-  // Preliminary deterministic score picks the finalists.
-  const finalists = selectFinalists(profile, filtered.kept, refreshedIds, signalsByEvent);
-
-  if (finalists.length === 0) {
-    notices.push("No events matched this profile's cause areas and geography.");
-    return {
-      matches: [],
-      receipt: meter.receipt(),
-      costEvents: meter.events,
-      meta: {
-        runId,
-        queries,
-        candidatesFound: candidates.length,
-        pagesScraped: scrape.pagesScraped,
-        eventsDiscovered: inserted,
-        eventsMerged: merged,
-        corpusSize: allEvents.length,
-        finalists: 0,
-        donorSignalEvents: signalsByEvent.size,
-        cloudModel: "",
-        notices,
-      },
-    };
-  }
-
-  // 6. EXPLAIN (cloud, finalists only).
-  const withSignals = finalists.map((event) => ({
+  const withSignals = finalists.map(({ event, matchTier }) => ({
     event,
+    matchTier,
     donorSignals: [
       ...event.donorSignals,
       ...(signalsByEvent.get(event.id) ?? []).filter(
@@ -222,14 +248,33 @@ export async function runEventMatch(
     );
   }
 
-  // 7. SCORE + STORE.
-  const writes = withSignals.map((f, i) => ({
-    eventId: f.event.id,
-    matchScore: scoreEvent(profile, f.event, f.donorSignals),
-    whyAttend: explained.explanations[i].whyAttend,
-    donorSignalCallout: explained.explanations[i].donorSignalCallout,
-    evidence: explained.explanations[i].evidence,
-  }));
+  let matchesDroppedForNoCitation = 0;
+  const writes = withSignals.flatMap((f, i) => {
+    const explanation = explained.explanations[i];
+    if (explanation.evidence.length === 0) {
+      matchesDroppedForNoCitation += 1;
+      return [];
+    }
+    if (f.event.id.startsWith("provisional:")) {
+      matchesDroppedForNoCitation += 1;
+      return [];
+    }
+    return [
+      {
+        eventId: f.event.id,
+        matchScore: scoreEvent(profile, f.event, f.donorSignals, f.matchTier),
+        matchTier: f.matchTier,
+        whyAttend: explanation.whyAttend,
+        donorSignalCallout: explanation.donorSignalCallout,
+        evidence: explanation.evidence,
+      },
+    ];
+  });
+  if (matchesDroppedForNoCitation > 0) {
+    notices.push(
+      `${matchesDroppedForNoCitation} match(es) dropped for having no verifiable citation.`,
+    );
+  }
   const stored = await upsertMatches(admin, profile.id, writes);
 
   const eventById = new Map(withSignals.map((f) => [f.event.id, f.event]));
@@ -247,7 +292,7 @@ export async function runEventMatch(
     meta: {
       runId,
       queries,
-      candidatesFound: candidates.length,
+      candidatesFound,
       pagesScraped: scrape.pagesScraped,
       eventsDiscovered: inserted,
       eventsMerged: merged,
@@ -255,6 +300,9 @@ export async function runEventMatch(
       finalists: finalists.length,
       donorSignalEvents: signalsByEvent.size,
       cloudModel: explained.model,
+      matchesDroppedForNoCitation,
+      budgetStops,
+      deepestTier: filtered.deepestTier,
       notices,
     },
   };

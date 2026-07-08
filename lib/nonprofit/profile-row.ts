@@ -10,6 +10,10 @@ export interface NonprofitProfileRow {
   cause_areas: string[];
   geography_focus: NonprofitProfile["geographyFocus"] | null;
   geography_detail: string | null;
+  headquarters: string | null;
+  cities_of_interest: string[];
+  regions_of_interest: string[];
+  areas_of_interest: string | null;
   org_size: string | null;
   current_donor_mix: string[];
   target_donor_type: string[];
@@ -31,6 +35,10 @@ export function rowToNonprofitProfile(row: NonprofitProfileRow): NonprofitProfil
     causeAreas: row.cause_areas ?? [],
     geographyFocus: row.geography_focus ?? undefined,
     geographyDetail: row.geography_detail ?? undefined,
+    headquarters: row.headquarters ?? undefined,
+    citiesOfInterest: row.cities_of_interest ?? [],
+    regionsOfInterest: row.regions_of_interest ?? [],
+    areasOfInterest: row.areas_of_interest ?? undefined,
     orgSize: row.org_size ?? undefined,
     currentDonorMix: row.current_donor_mix ?? [],
     targetDonorType: row.target_donor_type ?? [],

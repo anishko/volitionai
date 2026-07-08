@@ -1,18 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Bookmark,
   CalendarPlus,
+  Check,
   CircleDollarSign,
   Clock,
   MapPin,
   Mic2,
+  RefreshCw,
   Ticket,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -24,12 +27,60 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sortEventFeedItems, type EventFeedItem } from "@/lib/events/feed-item";
-import type { EventMatchStatus } from "@/types";
+import { feedBroadenedNotice, matchTierLabel } from "@/lib/events/match-tier-label";
+import { CostReceiptCard } from "@/components/cost-receipt";
+import type { EventMatchStatus, MatchRun } from "@/types";
+import type { CostReceipt } from "@/types/cost";
 
 interface EventsFeedProps {
   profileId: string;
   initialItems: EventFeedItem[];
+  initialRun: MatchRun | null;
+  /** Receipt from a server-side match run, when available. The client also sets
+   *  this after running a match this session. */
+  initialReceipt?: CostReceipt;
 }
+
+function fmtUsd(n: number): string {
+  if (n === 0) return "$0.00";
+  return n < 0.01 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`;
+}
+
+/** The trust signature: a subtle per-run cost line that expands to the
+ *  stage-by-stage breakdown, plus any honest "we stopped at budget" notices. */
+function ReceiptFooter({ receipt, notices }: { receipt: CostReceipt; notices: string[] }) {
+  return (
+    <details className="group rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400">
+        <CircleDollarSign className="size-3.5" />
+        <span>
+          This match run: <span className="font-medium text-zinc-700 dark:text-zinc-200">{fmtUsd(receipt.totalUsd)}</span>
+          {" · "}
+          {receipt.localTokenShare}% of tokens local
+        </span>
+        <span className="ml-auto text-zinc-400 group-open:hidden">details</span>
+        <span className="ml-auto hidden text-zinc-400 group-open:inline">hide</span>
+      </summary>
+      <div className="space-y-3 border-t border-zinc-100 p-4 dark:border-zinc-900">
+        <CostReceiptCard receipt={receipt} />
+        {notices.length > 0 && (
+          <ul className="space-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+            {notices.map((n, i) => (
+              <li key={i}>· {n}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </details>
+  );
+}
+
+// A run still "active" this long after starting is presumed hung (the server
+// budget is 150s); the feed stops polling and offers a retry instead.
+const RUN_HUNG_AFTER_MS = 4 * 60 * 1000;
+// A finished run older than this is stale; the corpus has likely moved on.
+const RUN_STALE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+const POLL_INTERVAL_MS = 4000;
 
 type MatchActionStatus = Extract<EventMatchStatus, "saved" | "dismissed">;
 
@@ -44,6 +95,14 @@ function formatDateRange(startDate?: string, endDate?: string): string {
   const start = fmt.format(new Date(`${startDate}T00:00:00Z`));
   if (!endDate || endDate === startDate) return start;
   return `${start} - ${fmt.format(new Date(`${endDate}T00:00:00Z`))}`;
+}
+
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
 }
 
 function formatLocation(event: EventFeedItem["event"]): string {
@@ -117,6 +176,34 @@ function EventCard({
   onStatusChange: (id: string, status: MatchActionStatus) => void;
 }) {
   const tiers = tierKinds(item.event);
+
+  const [ogImage, setOgImage] = useState<string | null>(null);
+  useEffect(() => {
+    fetch(`/api/og-image?url=${encodeURIComponent(item.event.website)}`)
+      .then((r) => r.json())
+      .then(({ imageUrl }: { imageUrl: string | null }) => {
+        if (imageUrl) setOgImage(imageUrl);
+      })
+      .catch(() => {});
+  }, [item.event.website]);
+
+  // "Add to Plan" — the one planning entry point on the card (Phase 6). Creates
+  // a plan from this match; POST is idempotent, so a re-add is a no-op.
+  const [addState, setAddState] = useState<"idle" | "pending" | "added" | "error">("idle");
+  async function addToPlan() {
+    setAddState("pending");
+    try {
+      const res = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId: item.id }),
+      });
+      setAddState(res.ok ? "added" : "error");
+    } catch {
+      setAddState("error");
+    }
+  }
+
   const firstDonorSignal = item.event.donorSignals[0];
   const donorSignal =
     item.donorSignalCallout ??
@@ -124,10 +211,20 @@ function EventCard({
       ? `${firstDonorSignal.foundationName} appears in event donor signals${
           firstDonorSignal.focusArea ? ` for ${firstDonorSignal.focusArea}` : ""
         }`
-      : "No verified donor signal available");
+      : null);
 
   return (
-    <Card className="rounded-lg border-zinc-200 shadow-none dark:border-zinc-800">
+    <Card className="overflow-hidden rounded-lg border-zinc-200 shadow-none dark:border-zinc-800">
+      {ogImage && (
+        <div className="h-44 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+          <img
+            src={ogImage}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={() => setOgImage(null)}
+          />
+        </div>
+      )}
       <CardHeader className="gap-3">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -137,21 +234,25 @@ function EventCard({
               <MapPin className="size-3.5" />
               {formatLocation(item.event)}
             </span>
+            {(() => {
+              const tier = matchTierLabel(item.matchTier);
+              if (!tier) return null;
+              return (
+                <span
+                  className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+                  title={tier.tooltip}
+                >
+                  {tier.short}
+                </span>
+              );
+            })()}
           </div>
           <CardTitle className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">
-            {item.event.name}
+            <Link href={`/events/${item.event.id}`} className="hover:underline">
+              {item.event.name}
+            </Link>
           </CardTitle>
         </div>
-        <CardAction>
-          <div className="rounded-lg border border-zinc-200 px-3 py-2 text-center dark:border-zinc-800">
-            <div className="text-xl font-semibold leading-none text-zinc-950 dark:text-zinc-50">
-              {item.matchScore}
-            </div>
-            <div className="mt-1 text-[0.65rem] font-medium uppercase tracking-wider text-zinc-500">
-              match
-            </div>
-          </div>
-        </CardAction>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -174,10 +275,33 @@ function EventCard({
           {item.whyAttend || "This event matched your profile, but the explanation is still being generated."}
         </p>
 
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300">
-          <span className="font-medium text-zinc-950 dark:text-zinc-100">Donor signal: </span>
-          {donorSignal}
-        </div>
+        {item.evidence.length > 0 && (
+          <div className="space-y-1.5">
+            {item.evidence.slice(0, 3).map((e, i) => (
+              <div key={i} className="flex items-baseline gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="shrink-0 font-mono text-zinc-400 dark:text-zinc-600">[{i + 1}]</span>
+                <span className="min-w-0">
+                  <span className="mr-1.5">{e.claim}</span>
+                  <a
+                    href={e.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    {hostnameOf(e.sourceUrl)}
+                  </a>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {donorSignal && (
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300">
+            <span className="font-medium text-zinc-950 dark:text-zinc-100">Donor signal: </span>
+            {donorSignal}
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
           {tiers.map(({ key, label, icon: Icon, available }) => (
@@ -198,6 +322,14 @@ function EventCard({
       </CardContent>
 
       <CardFooter className="flex flex-wrap justify-end gap-2 bg-zinc-50 dark:bg-zinc-900/60">
+        <a
+          href={item.event.website}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${buttonVariants({ variant: "ghost", size: "sm" })} mr-auto`}
+        >
+          Visit site →
+        </a>
         {item.status === "recommended" ? (
           <Button
             type="button"
@@ -223,53 +355,126 @@ function EventCard({
           <X />
           Dismiss
         </Button>
-        <Button type="button" variant="outline" disabled title="Planning actions are part of issue 7">
-          <CalendarPlus />
-          Add to Plan
-        </Button>
+        {addState === "added" ? (
+          <Link href="/plan" className={buttonVariants({ variant: "secondary" })}>
+            <Check />
+            Added — view plan
+          </Link>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={addState === "pending"}
+            onClick={addToPlan}
+            title={addState === "error" ? "Could not add — try again" : "Add to Plan"}
+          >
+            <CalendarPlus />
+            {addState === "error" ? "Retry add to plan" : "Add to Plan"}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
 }
 
-export function EventsFeed({ profileId, initialItems }: EventsFeedProps) {
+export function EventsFeed({
+  profileId,
+  initialItems,
+  initialRun,
+  initialReceipt,
+}: EventsFeedProps) {
   const [items, setItems] = useState(() => sortEventFeedItems(initialItems));
   const [activeTab, setActiveTab] = useState<"recommended" | "saved">("recommended");
   const [error, setError] = useState<string | null>(null);
   const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
   const [isMatching, setIsMatching] = useState(false);
+  const [receipt, setReceipt] = useState<CostReceipt | null>(initialReceipt ?? null);
+  const [runNotices, setRunNotices] = useState<string[]>(initialRun?.notices ?? []);
+  const [run, setRun] = useState<MatchRun | null>(initialRun);
+  // Wall-clock ticker (render-pure): drives the hung/stale checks. 0 until
+  // mount, so both checks stay conservatively false during SSR/hydration.
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
-    const storageKey = `volition:event-match-started:${profileId}`;
-    if (initialItems.length > 0 || window.localStorage.getItem(storageKey)) return;
+    const tick = () => setNow(Date.now());
+    const first = setTimeout(tick, 0); // async first tick keeps the effect body pure
+    const timer = setInterval(tick, 15_000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, []);
 
-    window.localStorage.setItem(storageKey, new Date().toISOString());
-    void (async () => {
-      setIsMatching(true);
-      setError(null);
+  const runActive = run?.status === "floor_ready" || run?.status === "live_running";
+  const runHung =
+    now > 0 &&
+    runActive &&
+    run != null &&
+    now - new Date(run.startedAt).getTime() > RUN_HUNG_AFTER_MS;
+  const runStale =
+    now > 0 &&
+    run?.status === "done" &&
+    run.finishedAt != null &&
+    now - new Date(run.finishedAt).getTime() > RUN_STALE_AFTER_MS;
+  // Retry is offered whenever there is no live search to wait for: never ran,
+  // failed, hung, or the last success has gone stale.
+  const showRetry = !isMatching && (!run || run.status === "failed" || runHung || runStale);
+
+  // Poll the run state while the background live search works (ADR-0005);
+  // results merge into the feed as the server writes them.
+  useEffect(() => {
+    if (!runActive || runHung) return;
+    const interval = setInterval(async () => {
       try {
-        const res = await fetch("/api/events/match", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profileId }),
-        });
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          setError(payload.error ?? "Event matching failed.");
-          return;
+        const res = await fetch(`/api/events/match?profileId=${encodeURIComponent(profileId)}`);
+        if (!res.ok) return; // transient; keep polling until the hung cutoff
+        const payload = await res.json();
+        if (payload.run) setRun(payload.run);
+        if (Array.isArray(payload.run?.notices)) {
+          setRunNotices(payload.run.notices);
         }
-        setItems(sortEventFeedItems(payload.matches ?? []));
-      } finally {
-        setIsMatching(false);
+        if (Array.isArray(payload.matches) && payload.matches.length > 0) {
+          setItems(sortEventFeedItems(payload.matches));
+        }
+      } catch {
+        // transient network failure; the next tick retries
       }
-    })();
-  }, [initialItems.length, profileId]);
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [runActive, runHung, profileId]);
+
+  async function runMatching() {
+    setIsMatching(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/events/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileId }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (payload.run) setRun(payload.run);
+      if (payload.receipt) setReceipt(payload.receipt as CostReceipt);
+      setRunNotices(payload.meta?.notices ?? payload.run?.notices ?? []);
+      if (!res.ok) {
+        setError(payload.error ?? "Event matching failed.");
+        return;
+      }
+      setItems(sortEventFeedItems(payload.matches ?? []));
+    } finally {
+      setIsMatching(false);
+    }
+  }
 
   const recommended = useMemo(
     () => items.filter((item) => item.status === "recommended"),
     [items],
   );
   const saved = useMemo(() => items.filter((item) => item.status === "saved"), [items]);
+  const broadenedNotice = useMemo(
+    () => feedBroadenedNotice(items.some((item) => item.matchTier !== "strict")),
+    [items],
+  );
 
   async function updateStatus(id: string, status: MatchActionStatus) {
     const previous = items;
@@ -300,7 +505,9 @@ export function EventsFeed({ profileId, initialItems }: EventsFeedProps) {
   }
 
   const activeItems = activeTab === "recommended" ? recommended : saved;
-  const showMatchingSkeleton = isMatching && activeTab === "recommended";
+  // The skeleton only stands in when there is nothing to show - a re-run must
+  // never hide the cards the user already has.
+  const showMatchingSkeleton = isMatching && recommended.length === 0 && activeTab === "recommended";
 
   return (
     <Tabs
@@ -313,17 +520,37 @@ export function EventsFeed({ profileId, initialItems }: EventsFeedProps) {
           <TabsTrigger value="recommended">For You ({recommended.length})</TabsTrigger>
           <TabsTrigger value="saved">Saved ({saved.length})</TabsTrigger>
         </TabsList>
-        {isMatching && (
-          <div className="inline-flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-            <Clock className="size-4 animate-pulse" />
-            Matching events
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {isMatching ? (
+            <div className="inline-flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+              <Clock className="size-4 animate-pulse" />
+              Matching events
+            </div>
+          ) : runActive && !runHung ? (
+            <div className="inline-flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+              <RefreshCw className="size-4 animate-spin [animation-duration:2.5s]" />
+              Searching live sources for more events
+            </div>
+          ) : null}
+          {showRetry && (
+            <Button type="button" variant="outline" size="sm" onClick={runMatching}>
+              <RefreshCw />
+              Find more events
+            </Button>
+          )}
+        </div>
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-200">
-          {error}
+      {(error ?? (run?.status === "failed" ? run.error : null) ?? (runHung ? "Live search is taking longer than expected." : null)) && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+          {error ?? (run?.status === "failed" ? run.error : null) ?? "Live search is taking longer than expected."}{" "}
+          {items.length > 0 && "Your matched events below are unaffected."}
+        </div>
+      )}
+
+      {broadenedNotice && (
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300">
+          {broadenedNotice}
         </div>
       )}
 
@@ -358,6 +585,8 @@ export function EventsFeed({ profileId, initialItems }: EventsFeedProps) {
           <EmptyState tab="saved" />
         )}
       </TabsContent>
+
+      {receipt && <ReceiptFooter receipt={receipt} notices={runNotices} />}
 
       {activeItems.length > 0 && (
         <p className="text-xs text-zinc-500 dark:text-zinc-500">

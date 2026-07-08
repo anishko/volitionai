@@ -18,6 +18,9 @@ export interface EventSearchOutcome {
   candidates: EventSearchCandidate[];
   searchesRun: number;
   searchesFailed: number;
+  /** True when the Tavily credit ceiling truncated the planned query set —
+   *  partial results by design (PRD: "we stopped at budget" beats runaway cost). */
+  stoppedAtBudget: boolean;
 }
 
 // Domains that list events but are not event pages themselves; scraping them
@@ -42,6 +45,9 @@ export async function searchEventCandidates(
   queries: string[],
   resultsPerQuery = 5,
 ): Promise<EventSearchOutcome> {
+  // Hard budget cap (PRD: max 20 Tavily credits per match run). Excess queries
+  // are not run — the run degrades to partial results with a logged notice.
+  const stoppedAtBudget = queries.length > MAX_TAVILY_SEARCHES_PER_RUN;
   const capped = queries.slice(0, MAX_TAVILY_SEARCHES_PER_RUN);
   const started = Date.now();
   const settled = await Promise.allSettled(
@@ -71,5 +77,5 @@ export async function searchEventCandidates(
     candidates.push({ url: r.url, title: r.title, snippet: r.snippet, query: r.query });
   }
 
-  return { candidates, searchesRun: ok, searchesFailed: capped.length - ok };
+  return { candidates, searchesRun: ok, searchesFailed: capped.length - ok, stoppedAtBudget };
 }

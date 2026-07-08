@@ -8,6 +8,8 @@
 | YouTube Data API | Free, 10,000 units/day (search ≈ 100 units → ~100 searches/day) | Content-trend lane: what's rising for this audience | Google Cloud key, no billing needed |
 | Reddit API | Free tier for modest OAuth usage | Community signal per niche | Respect rate limits; hackathon volume is fine |
 | Federal Register / LegiScan | Free / free tier | Minor law lane | Carried over from earlier design |
+| ProPublica Nonprofit Explorer | Free, no key required | Donor + comparable lanes: IRS 990 data — peer orgs, foundation financials | `lib/data/propublica.ts`; cite `projects.propublica.org/nonprofits/organizations/<ein>` |
+| Eventbrite Events API | Free (create an app at eventbrite.com/platform/api) | Event lane: upcoming conferences/events by keyword with organizer + location | `EVENTBRITE_API_KEY` env var; `lib/data/eventbrite.ts` |
 
 ## Out (deliberately — this is a pitch slide, not a shortfall)
 | Source | Why skipped |

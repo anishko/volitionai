@@ -1,10 +1,9 @@
-// One-time onboarding: conversational-first (PRD v4). The local model chats to
-// build the profile; /onboarding/form is the structured fallback. Users with a
+// One-time onboarding: structured form with selection chips. Users with a
 // profile already are sent to /events; middleware sends signed-out users to
 // /login before this renders.
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient, supabaseConfigured } from "@/lib/supabase/server";
-import { OnboardingChat } from "@/components/onboarding-chat";
+import { OnboardingForm } from "@/components/onboarding-form";
 
 // Session + profile checks must run per-request, never at build time.
 export const dynamic = "force-dynamic";
@@ -26,7 +25,7 @@ export default async function OnboardingPage() {
 
   return (
     <div className="min-h-screen w-full bg-zinc-50 px-4 py-10 dark:bg-black sm:px-8">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-2xl">
         <header className="mb-8 text-center">
           <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
             Volition
@@ -35,11 +34,12 @@ export default async function OnboardingPage() {
             Tell us about your org.
           </h1>
           <p className="mx-auto mt-2 max-w-lg text-sm text-zinc-500 dark:text-zinc-400">
-            Just chat — no forms. We build a persistent profile as we talk and
-            use it to find events where your target donors actually show up.
+            About two minutes, once. Pick your cause areas, donors, and goals —
+            we build a persistent profile locally and use it to find events
+            where your target donors actually show up.
           </p>
         </header>
-        <OnboardingChat />
+        <OnboardingForm />
       </div>
     </div>
   );

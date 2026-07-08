@@ -1,6 +1,7 @@
 // Zod contract for the onboarding form (docs/NONPROFIT_EVENTS_PRD.md,
 // "Onboarding form"). Shared by the client form and POST /api/nonprofit/profile.
 import { z } from "zod";
+import { REGION_VALUES } from "./region-options";
 
 // PRD vocabulary. The issue lists seven + other; the PRD adds civil liberties
 // (the wedge segment must not have to pick "other") and faith-based.
@@ -61,6 +62,10 @@ export const PRIMARY_GOALS = [
 const values = <T extends readonly { value: string }[]>(opts: T) =>
   opts.map((o) => o.value) as [T[number]["value"], ...T[number]["value"][]];
 
+const usCityValue = z
+  .string()
+  .regex(/^[^,]+,\s[A-Z]{2}$/, "Pick a U.S. city from the list (e.g. “Atlanta, GA”)");
+
 export const OnboardingFormSchema = z.object({
   orgName: z.string().trim().min(2, "Org name is required"),
   website: z
@@ -71,23 +76,21 @@ export const OnboardingFormSchema = z.object({
     .or(z.literal("").transform(() => undefined)),
   causeAreas: z.array(z.enum(values(CAUSE_AREAS))).min(1, "Pick at least one cause area"),
   geographyFocus: z.enum(values(GEOGRAPHY_FOCUS)),
-  geographyDetail: z.string().trim().max(200).optional(),
+  geographyDetail: usCityValue.optional().or(z.literal("").transform(() => undefined)),
+  headquarters: usCityValue.optional().or(z.literal("").transform(() => undefined)),
+  citiesOfInterest: z.array(usCityValue).max(12).default([]),
+  regionsOfInterest: z.array(z.enum(REGION_VALUES)).max(12).default([]),
   orgSize: z.enum(values(ORG_SIZES)),
   currentDonorMix: z.array(z.enum(values(DONOR_TYPES))).default([]),
   targetDonorType: z.array(z.enum(values(DONOR_TYPES))).min(1, "Pick at least one target donor type"),
   primaryGoal: z.enum(values(PRIMARY_GOALS)),
   openEndedNotes: z.string().trim().max(2000).optional(),
-  // amendment #2: budget-capped annual planning + cause sub-tags.
   causeSubTags: z.array(z.string().trim().min(1)).max(12).default([]),
-  annualBudgetCap: z.number().nonnegative().finite().optional(),
-  budgetPeriod: z.string().trim().max(20).optional(),
-  // amendment #3: model's free-text summary of context the fields don't hold.
   qualitativeSignals: z.string().trim().max(2000).optional(),
 });
 
 export type OnboardingForm = z.infer<typeof OnboardingFormSchema>;
 
-// Loose partial the conversational intake fills incrementally — every field
-// optional so a half-finished conversation still validates and renders.
+// Partial shape for incremental profile edits (e.g. future /profile page).
 export const PartialOnboardingSchema = OnboardingFormSchema.partial();
 export type PartialOnboarding = z.infer<typeof PartialOnboardingSchema>;

@@ -217,3 +217,27 @@
     }
   }
 }
+
+/* Google Places Autocomplete dropdown — match app chrome */
+.pac-container {
+  z-index: 50;
+  margin-top: 4px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--popover);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  font-family: inherit;
+}
+.pac-item {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+.pac-item:hover,
+.pac-item-selected {
+  background: var(--muted);
+}
+.pac-icon {
+  display: none;
+}

@@ -1,9 +1,13 @@
-// STAGE 3: event page scraping. Firecrawl fetches each candidate page as
-// markdown; a LOCAL model ($0, metered cloud fallback) extracts structured
+// STAGE 3: event page scraping. A scrape provider fetches each candidate page
+// as markdown; a LOCAL model ($0, metered cloud fallback) extracts structured
 // event data. Source URLs are stamped mechanically from the scraped page —
 // the model never invents citations. Hard page cap per PRD budget rules.
+// Provider: Firecrawl preferred-if-configured; Tavily /extract as the fallback
+// (same key the search lane already runs on) so the live lane is never dark;
+// existing skip notice only when neither is configured.
 import { z } from "zod";
 import { firecrawlConfigured, firecrawlScrape } from "@/lib/data/firecrawl";
+import { tavilyExtractConfigured, tavilyExtractScrape } from "@/lib/data/tavily-extract";
 import { ollamaChat } from "@/lib/ai/ollama";
 import { anthropicMessage } from "@/lib/ai/anthropic";
 import { CostMeter } from "@/lib/ai/cost";
@@ -11,7 +15,7 @@ import { looseJsonParse, todayStr } from "@/lib/pipeline/schema";
 import { CAUSE_AREAS } from "@/lib/nonprofit/onboarding-schema";
 import type { EventSearchCandidate } from "./search";
 
-export const MAX_FIRECRAWL_PAGES_PER_RUN = 15;
+export const MAX_SCRAPE_PAGES_PER_RUN = 15;
 const MARKDOWN_CHAR_LIMIT = 8_000;
 
 const isoDate = z
@@ -20,23 +24,23 @@ const isoDate = z
   .nullish()
   .catch(null); // a malformed date degrades to "unknown", never kills the page
 
-const ScrapedEventSchema = z.object({
-  isEvent: z.boolean(),
-  name: z.string().default(""),
+export const ScrapedEventSchema = z.object({
+  isEvent: z.boolean().catch(false),
+  name: z.string().catch(""), // models emit null for non-event pages — degrade, don't fail the page
   startDate: isoDate,
   endDate: isoDate,
   locationCity: z.string().nullish(),
   locationState: z.string().nullish(),
   locationCountry: z.string().nullish(),
   format: z.enum(["in_person", "virtual", "hybrid"]).nullish().catch(null),
-  causeAreaTags: z.array(z.string()).default([]),
+  causeAreaTags: z.array(z.string()).catch([]),
   speakers: z
     .array(z.object({ name: z.string().min(1), title: z.string().nullish(), org: z.string().nullish() }))
-    .default([]),
-  sponsors: z.array(z.object({ name: z.string().min(1) })).default([]),
+    .catch([]),
+  sponsors: z.array(z.object({ name: z.string().min(1) })).catch([]),
   organizerContacts: z
     .array(z.object({ name: z.string().min(1), role: z.string().nullish(), email: z.string().nullish() }))
-    .default([]),
+    .catch([]),
   participationTiers: z
     .array(
       z.object({
@@ -47,7 +51,7 @@ const ScrapedEventSchema = z.object({
         instructions: z.string().nullish(),
       }),
     )
-    .default([]),
+    .catch([]),
 });
 export type ScrapedEventData = z.infer<typeof ScrapedEventSchema>;
 
@@ -63,6 +67,9 @@ export interface ScrapeOutcome {
   pagesScraped: number;
   pagesFailed: number;
   skippedReason?: string; // set when the whole stage was skipped (no API key)
+  /** True when the deep-scrape page ceiling truncated the candidate list —
+   *  partial results by design (PRD budget rule), surfaced as a run notice. */
+  stoppedAtBudget: boolean;
 }
 
 const CAUSE_VOCAB = CAUSE_AREAS.map((c) => c.value).filter((v) => v !== "other");
@@ -132,22 +139,56 @@ async function extractEvent(
   return ScrapedEventSchema.parse(looseJsonParse(r.text));
 }
 
+/** A deep-scrape provider: fetch one page's markdown and meter it under the
+ *  provider that bills for it. Both fetchers return the same shape. */
+interface ScrapeProvider {
+  fetch(url: string): Promise<{ markdown: string; latencyMs: number }>;
+  meterPage(meter: CostMeter, latencyMs: number): void;
+}
+
+/** Firecrawl preferred-if-configured; Tavily /extract as the fallback so the
+ *  live lane is never dark. null when neither is configured (skip stage). */
+function selectScrapeProvider(): ScrapeProvider | null {
+  if (firecrawlConfigured()) {
+    return {
+      fetch: firecrawlScrape,
+      meterPage: (meter, latencyMs) => meter.firecrawl({ stage: "event_scrape", pages: 1, latencyMs }),
+    };
+  }
+  if (tavilyExtractConfigured()) {
+    return {
+      fetch: tavilyExtractScrape,
+      meterPage: (meter, latencyMs) => meter.tavilyExtract({ stage: "event_scrape", urls: 1, latencyMs }),
+    };
+  }
+  return null;
+}
+
 export async function scrapeEventCandidates(
   meter: CostMeter,
   candidates: EventSearchCandidate[],
   maxPages: number,
 ): Promise<ScrapeOutcome> {
-  if (!firecrawlConfigured()) {
+  const provider = selectScrapeProvider();
+  if (!provider) {
+    // Neither provider configured — record a zero-cost scrape stage for the
+    // audit trail (attributed to Firecrawl, the preferred provider).
     meter.firecrawl({ stage: "event_scrape", pages: 0, latencyMs: 0 });
     return {
       events: [],
       pagesScraped: 0,
       pagesFailed: 0,
-      skippedReason: "Firecrawl not configured; live-discovered events were not deep-scraped.",
+      skippedReason:
+        "No page-scrape provider configured (Firecrawl or Tavily extract); live-discovered events were not deep-scraped.",
+      stoppedAtBudget: false,
     };
   }
 
-  const toScrape = candidates.slice(0, Math.min(maxPages, MAX_FIRECRAWL_PAGES_PER_RUN));
+  // Hard budget cap (PRD: max 15 deep-scrape pages per match run). stoppedAtBudget
+  // reports only when the ceiling itself binds — not the smaller per-run default.
+  const cap = Math.min(maxPages, MAX_SCRAPE_PAGES_PER_RUN);
+  const stoppedAtBudget = candidates.length > MAX_SCRAPE_PAGES_PER_RUN;
+  const toScrape = candidates.slice(0, cap);
   const events: ScrapedEvent[] = [];
   let pagesScraped = 0;
   let pagesFailed = 0;
@@ -155,11 +196,13 @@ export async function scrapeEventCandidates(
   // Sequential on purpose: local extraction serializes on Ollama anyway, and
   // one slow page must not starve the rest of the run.
   for (const candidate of toScrape) {
+    // In-loop hard stop: never exceed the page ceiling even if cap logic changes.
+    if (pagesScraped >= MAX_SCRAPE_PAGES_PER_RUN) break;
     const started = Date.now();
     try {
-      const page = await firecrawlScrape(candidate.url);
+      const page = await provider.fetch(candidate.url);
       pagesScraped += 1;
-      meter.firecrawl({ stage: "event_scrape", pages: 1, latencyMs: page.latencyMs });
+      provider.meterPage(meter, page.latencyMs);
 
       const data = await extractEvent(meter, candidate, page.markdown);
       if (!data.isEvent || data.name.trim().length < 3) continue;
@@ -177,5 +220,5 @@ export async function scrapeEventCandidates(
     }
   }
 
-  return { events, pagesScraped, pagesFailed };
+  return { events, pagesScraped, pagesFailed, stoppedAtBudget };
 }

@@ -8,9 +8,14 @@ export interface BusinessProfile {
   goals: string[];             // e.g. ["find sponsors", "more foot traffic"]
   voice?: string;              // tone extracted from uploaded past content
   pastContentThemes?: string[];
+  // Nonprofit/advocacy extras — populated when the org is mission-driven
+  issueAreas?: string[];       // ["child welfare", "eminent domain", "homeless rights"]
+  movementAlignment?: string;  // "libertarian", "progressive", "conservative", etc.
+  geographicReach?: string[];  // cities/states where they operate beyond home base
+  nonprofitType?: string;      // "legal advocacy", "direct services", "policy", etc.
 }
 
-export type IdeaLane = "trend" | "comparable" | "opportunity" | "law";
+export type IdeaLane = "trend" | "comparable" | "opportunity" | "law" | "event" | "donor";
 
 export interface Evidence {
   claim: string;               // the specific fact this idea rests on
@@ -36,6 +41,13 @@ export type GeographyFocus = "local" | "regional" | "national" | "international"
 export type EventFormat = "in_person" | "virtual" | "hybrid";
 export type EventMatchStatus = "recommended" | "saved" | "dismissed";
 
+// Which relaxation-cascade tier produced a match (ADR-0004). Ordered from
+// strictest to loosest; the scorer applies a growing penalty down the list.
+export type MatchTier = "strict" | "geo_relaxed" | "cause_broadened" | "virtual_floor";
+
+// Server-side match-run state (ADR-0005): floor_ready -> live_running -> done | failed.
+export type MatchRunStatus = "floor_ready" | "live_running" | "done" | "failed";
+
 /** A cited fact: the claim plus the URL it was verified against. */
 export interface SourcedClaim {
   claim: string;
@@ -50,6 +62,11 @@ export interface NonprofitProfile {
   causeAreas: string[];
   geographyFocus?: GeographyFocus;
   geographyDetail?: string;
+  headquarters?: string;
+  citiesOfInterest?: string[];
+  regionsOfInterest?: string[];
+  /** @deprecated Legacy free-text field; use citiesOfInterest + regionsOfInterest */
+  areasOfInterest?: string;
   orgSize?: string;              // budget range, e.g. "under $500k"
   currentDonorMix: string[];     // individual / foundation / corporate / government
   targetDonorType: string[];     // same vocabulary; what they want more of
@@ -125,6 +142,7 @@ export interface Event {
   format?: EventFormat;
   causeAreaTags: string[];
   isSeed: boolean;
+  isUniversal: boolean;          // sector-wide event, relevant to any org past strict matching (ADR-0007)
   speakers: EventSpeaker[];
   sponsors: EventSponsor[];
   organizerContacts: EventOrganizerContact[];
@@ -133,6 +151,8 @@ export interface Event {
   timingSignals: TimingSignal[];
   scrapeCount: number;
   lastScrapedAt?: string;
+  /** Every URL that contributed fields to this corpus row (PR5 / ADR-0006). */
+  sourceUrls: string[];
   createdAt: string;
 }
 
@@ -145,8 +165,19 @@ export interface EventMatch {
   donorSignalCallout?: string;
   evidence: SourcedClaim[];      // min length 1 - enforce in API route
   status: EventMatchStatus;
+  matchTier: MatchTier;          // which cascade tier surfaced this match (ADR-0004)
   dismissedReason?: string;      // v2 feedback loop; collected now
   createdAt: string;
+}
+
+export interface MatchRun {
+  id: string;
+  profileId: string;
+  status: MatchRunStatus;
+  notices: string[];             // honest degradation messages, surfaced in-UI
+  error?: string;                // set only when status = "failed"
+  startedAt: string;
+  finishedAt?: string;
 }
 
 export interface PlanChecklistItem {
@@ -168,6 +199,25 @@ export interface EventPlan {
   updatedAt: string;
 }
 
+// Post-event debrief (Phase 7, v1.5): the "actual" side of planned-vs-actual,
+// one per plan (event_debriefs → event_plans). These are the org's OWN reported
+// numbers, so — unlike the sourced PLANNED figures on EventPlan — they carry no
+// source_url (PRD rule 1 applies only to figures we researched). worth_it +
+// notes predate the actuals columns (see migrations 000700 + debrief_actuals).
+export type DebriefOutcome = "attended" | "skipped";
+
+export interface EventDebrief {
+  id: string;
+  planId: string;
+  worthIt?: number;              // 1-5 self-rating; absent until answered
+  outcome?: DebriefOutcome;      // did the org attend or skip in the end
+  actualSpendUsd?: number;       // actual money spent (user-reported, uncited)
+  leadsGained?: number;          // leads captured at the event
+  contactsGained?: number;       // contacts/connections made
+  notes?: string;                // freeform reflection
+  createdAt: string;
+}
+
 export interface IdeaCard {
   id: string;
   lane: IdeaLane;
@@ -179,4 +229,33 @@ export interface IdeaCard {
   confidence: "high" | "medium" | "low";
   draftContent?: string;       // filled by "draft it" in org voice
   isSample?: boolean;          // true = mocked; UI must show a label
+  // Event-lane extras — only populated when lane === "event"
+  eventDates?: string;         // "annual, usually March" — never a specific past date
+  eventLocation?: string;
+  knownPastSponsors?: string[]; // only if citable from evidence
+  organizerContact?: string;   // only if citable from evidence
+  sponsorCost?: string;        // only if citable from evidence
+  // Donor-lane extras — only populated when lane === "donor"
+  donorType?: "individual" | "foundation" | "pac" | "corporate";
+  approachAngle?: string;      // how to make first contact, grounded in evidence
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5 outreach drafting (docs/NONPROFIT_EVENTS_PRD.md → "Outreach
+// drafting"). The AI prepares; the human sends. Drafts are generated LOCALLY in
+// the org's voice and carry the match's cited claims they drew on. Additive —
+// mirrors the outreach_drafts table (snake_case in the DB).
+// ---------------------------------------------------------------------------
+
+export type OutreachDraftType = "sponsor_pitch" | "cfp_abstract" | "intro_email";
+export type OutreachModelRoute = "local" | "cloud" | "fallback:cloud";
+
+export interface OutreachDraft {
+  id: string;
+  matchId: string;
+  draftType: OutreachDraftType;
+  body: string;
+  evidence: SourcedClaim[];    // the match's cited claims this draft drew on
+  modelRoute: OutreachModelRoute;
+  createdAt: string;
 }

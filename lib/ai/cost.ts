@@ -77,6 +77,19 @@ export class CostMeter {
     });
   }
 
+  /** Tavily /extract deep-scrape (fallback provider) — priced per URL. Attributed
+   *  to provider "tavily" because Tavily bills it; the stage (event_scrape)
+   *  distinguishes it from Tavily search (event_search) on the receipt. */
+  tavilyExtract(args: { stage: PipelineStage; urls: number; latencyMs: number }): CostEvent {
+    return this.push({
+      stage: args.stage,
+      provider: "tavily",
+      unitCount: args.urls,
+      usd: args.urls * PRICES.tavily.perExtractUrlAdvancedUsd,
+      latencyMs: args.latencyMs,
+    });
+  }
+
   /** Firecrawl deep-scrape — priced per page from the price table. */
   firecrawl(args: { stage: PipelineStage; pages: number; latencyMs: number }): CostEvent {
     return this.push({
@@ -95,6 +108,28 @@ export class CostMeter {
       provider: "propublica",
       unitCount: args.calls,
       usd: args.calls * PRICES.propublica.perCallUsd,
+      latencyMs: args.latencyMs,
+    });
+  }
+
+  /** Eventbrite Events API — free tier, still metered for the audit trail. */
+  eventbrite(args: { stage: PipelineStage; calls: number; latencyMs: number }): CostEvent {
+    return this.push({
+      stage: args.stage,
+      provider: "eventbrite",
+      unitCount: args.calls,
+      usd: 0,
+      latencyMs: args.latencyMs,
+    });
+  }
+
+  /** Meetup official API — free source, still metered (unit = keyword searches). */
+  meetup(args: { stage: PipelineStage; calls: number; latencyMs: number }): CostEvent {
+    return this.push({
+      stage: args.stage,
+      provider: "meetup",
+      unitCount: args.calls,
+      usd: args.calls * PRICES.meetup.perCallUsd,
       latencyMs: args.latencyMs,
     });
   }

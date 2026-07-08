@@ -1,8 +1,20 @@
-// STAGE 5: rules-based candidate filter + deterministic match scoring.
-// Runs before any cloud LLM so paid tokens only touch finalists (PRD rule).
-// The filter drops clear mismatches; the score (0-100) is explainable math
-// over cause overlap, geography fit, timing, and donor signals — not vibes.
-import type { DonorSignal, Event, NonprofitProfile } from "@/types";
+// STAGE 5: relaxation-cascade filter + deterministic match scoring
+// (ADR-0004). Runs before any cloud LLM so paid tokens only touch finalists.
+//
+// The old filter was all-or-nothing: strict cause ∩ geography ∩ upcoming, and
+// a profile that zeroed it out saw an empty feed with no recourse. The
+// cascade makes a run over a non-empty corpus never return empty: strict
+// matching first, then fixed relaxation tiers - drop geography, broaden to
+// adjacent/universal causes (ADR-0007), finally any upcoming virtual event -
+// stopping at the first tier that reaches the floor. Every kept event is
+// tagged with the tier that surfaced it; the tier drives a score penalty and
+// the honest "we broadened" UI label, so a strict match and a virtual-floor
+// match are never presented as the same thing.
+import type { DonorSignal, Event, MatchTier, NonprofitProfile } from "@/types";
+import { adjacentCauses } from "./adjacency";
+
+// Below this many kept events, the cascade relaxes to the next tier.
+export const MATCH_FLOOR = 5;
 
 const US_STATES: Record<string, string> = {
   alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
@@ -18,15 +30,24 @@ const US_STATES: Record<string, string> = {
   "district of columbia": "DC",
 };
 
-/** State codes implied by the profile's freetext geography detail. */
+/** State codes implied by the profile's geography text fields. */
 function profileStateCodes(profile: NonprofitProfile): Set<string> {
   const codes = new Set<string>();
-  const detail = (profile.geographyDetail ?? "").toLowerCase();
-  if (!detail) return codes;
+  const combined = [
+    profile.geographyDetail,
+    profile.headquarters,
+    ...(profile.citiesOfInterest ?? []),
+    ...(profile.regionsOfInterest ?? []),
+    profile.areasOfInterest,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  if (!combined) return codes;
   for (const [name, code] of Object.entries(US_STATES)) {
-    if (detail.includes(name)) codes.add(code);
+    if (combined.includes(name)) codes.add(code);
   }
-  for (const m of detail.toUpperCase().matchAll(/\b([A-Z]{2})\b/g)) {
+  for (const m of combined.toUpperCase().matchAll(/\b([A-Z]{2})\b/g)) {
     if (Object.values(US_STATES).includes(m[1])) codes.add(m[1]);
   }
   return codes;
@@ -42,72 +63,140 @@ function isPast(event: Event, today: string): boolean {
   return Boolean(last && last < today);
 }
 
+/**
+ * Geography compatibility for the STRICT tier. Tolerates partial fields
+ * (crawler candidates may lack location/format): unknowns get the benefit of
+ * the doubt here and are differentiated by the score, not dropped.
+ */
+function geoCompatible(
+  profile: NonprofitProfile,
+  states: Set<string>,
+  event: Event,
+): boolean {
+  // A non-international org gains nothing from an in-person event abroad.
+  if (
+    profile.geographyFocus !== "international" &&
+    event.format === "in_person" &&
+    event.locationCountry &&
+    event.locationCountry !== "USA"
+  ) {
+    return false;
+  }
+  // A local/regional org with known home states: in-person events must be in
+  // one of them to count as strict. Virtual/hybrid reach everywhere; events
+  // with unknown state stay strict and let scoring differentiate.
+  const localFocus =
+    profile.geographyFocus === "local" || profile.geographyFocus === "regional";
+  if (localFocus && states.size > 0 && event.format === "in_person" && event.locationState) {
+    return states.has(event.locationState);
+  }
+  return true;
+}
+
+/** An event kept by the cascade, tagged with the tier that surfaced it. */
+export interface TieredEvent {
+  event: Event;
+  matchTier: MatchTier;
+}
+
 export interface FilterOutcome {
-  kept: Event[];
-  droppedNoCauseOverlap: number;
-  droppedGeography: number;
+  kept: TieredEvent[];
+  /** Loosest tier the cascade had to run to try to fill the floor. */
+  deepestTier: MatchTier;
+  /** True when any non-strict tier contributed events (drives the UI notice). */
+  relaxed: boolean;
   droppedPast: number;
 }
+
+const TIER_ORDER: MatchTier[] = ["strict", "geo_relaxed", "cause_broadened", "virtual_floor"];
 
 export function filterCandidates(
   profile: NonprofitProfile,
   events: Event[],
+  floor = MATCH_FLOOR,
 ): FilterOutcome {
   const today = new Date().toISOString().slice(0, 10);
-  // A profile whose only cause area is "other" can't be cause-filtered; keep
-  // all candidates and let scoring + the explainer differentiate.
-  const causeFilterActive = profile.causeAreas.some((c) => c !== "other");
+  // Past events never surface, at any tier - relaxation loosens relevance,
+  // never truth.
+  const upcoming = events.filter((e) => !isPast(e, today));
+  const droppedPast = events.length - upcoming.length;
 
-  const kept: Event[] = [];
-  let droppedNoCauseOverlap = 0;
-  let droppedGeography = 0;
-  let droppedPast = 0;
+  const states = profileStateCodes(profile);
+  const effectiveCauses = profile.causeAreas.filter((c) => c !== "other");
+  // A profile whose only cause is "other" can't be cause-filtered; every
+  // event passes the cause check and scoring differentiates.
+  const causeFilterActive = effectiveCauses.length > 0;
+  const adjacent = adjacentCauses(effectiveCauses);
 
-  for (const event of events) {
-    if (isPast(event, today)) {
-      droppedPast += 1;
-      continue;
+  const causeOk = (e: Event) => !causeFilterActive || causeOverlap(profile, e).length > 0;
+  const tierPredicate: Record<MatchTier, (e: Event) => boolean> = {
+    strict: (e) => causeOk(e) && geoCompatible(profile, states, e),
+    geo_relaxed: (e) => causeOk(e),
+    cause_broadened: (e) =>
+      e.isUniversal || e.causeAreaTags.some((t) => adjacent.has(t)),
+    // Hybrid counts: it can be attended virtually, which is the point of
+    // the floor - something the org can actually get to.
+    virtual_floor: (e) => e.format === "virtual" || e.format === "hybrid",
+  };
+
+  // Cumulative relaxation: each tier adds events the earlier tiers missed;
+  // an event keeps the strictest tier that surfaced it.
+  const kept = new Map<string, TieredEvent>();
+  let deepestTier: MatchTier = "strict";
+  for (const tier of TIER_ORDER) {
+    if (tier !== "strict" && kept.size >= floor) break;
+    deepestTier = tier;
+    for (const event of upcoming) {
+      if (!kept.has(event.id) && tierPredicate[tier](event)) {
+        kept.set(event.id, { event, matchTier: tier });
+      }
     }
-    if (causeFilterActive && causeOverlap(profile, event).length === 0) {
-      droppedNoCauseOverlap += 1;
-      continue;
-    }
-    // Geography incompatibility: a non-international org gains nothing from an
-    // in-person event in another country. (Demo corpus is US-based.)
-    if (
-      profile.geographyFocus !== "international" &&
-      event.format === "in_person" &&
-      event.locationCountry &&
-      event.locationCountry !== "USA"
-    ) {
-      droppedGeography += 1;
-      continue;
-    }
-    kept.push(event);
   }
 
-  return { kept, droppedNoCauseOverlap, droppedGeography, droppedPast };
+  const items = Array.from(kept.values());
+  return {
+    kept: items,
+    deepestTier,
+    relaxed: items.some((k) => k.matchTier !== "strict"),
+    droppedPast,
+  };
 }
+
+// Relaxed matches must never outrank strict ones of comparable quality; the
+// penalty grows with distance from what the org actually asked for.
+const TIER_PENALTY: Record<MatchTier, number> = {
+  strict: 0,
+  geo_relaxed: 10,
+  cause_broadened: 15,
+  virtual_floor: 25,
+};
 
 /**
  * Deterministic 0-100 match score. Components (max):
  * cause overlap 40, geography fit 20, timing 15, donor signals 15,
- * target-donor alignment 10.
+ * target-donor alignment 10; minus the match-tier penalty.
  */
 export function scoreEvent(
   profile: NonprofitProfile,
   event: Event,
   donorSignals: DonorSignal[],
+  tier: MatchTier = "strict",
 ): number {
   let score = 0;
 
-  // Cause overlap: fraction of the org's causes this event covers.
+  // Cause overlap: fraction of the org's causes this event covers. Universal
+  // events serve any cause (that is what the flag means), so a broadened
+  // universal match earns the neutral baseline rather than zero.
   const profileCauses = profile.causeAreas.filter((c) => c !== "other");
   if (profileCauses.length === 0) {
     score += 20; // "other"-only profile: neutral baseline
   } else {
     const overlap = causeOverlap(profile, event).length;
-    score += Math.round(40 * Math.min(1, overlap / profileCauses.length));
+    if (overlap > 0) {
+      score += Math.round(40 * Math.min(1, overlap / profileCauses.length));
+    } else if (event.isUniversal) {
+      score += 20;
+    }
   }
 
   // Geography fit.
@@ -145,5 +234,5 @@ export function scoreEvent(
     score += 10;
   }
 
-  return Math.max(0, Math.min(100, score));
+  return Math.max(0, Math.min(100, score - TIER_PENALTY[tier]));
 }

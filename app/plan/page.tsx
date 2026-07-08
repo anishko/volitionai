@@ -77,6 +77,12 @@ export default async function PlanPage() {
             >
               Annual plan
             </Link>
+            <Link
+              href="/settings"
+              className="rounded-md border border-zinc-200 px-3 py-2 font-medium text-zinc-700 hover:bg-white dark:border-zinc-800 dark:text-zinc-200"
+            >
+              Settings
+            </Link>
           </nav>
         </header>
 

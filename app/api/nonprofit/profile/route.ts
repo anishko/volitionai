@@ -1,43 +1,24 @@
 // POST /api/nonprofit/profile — save onboarding form, run LOCAL extraction,
-// store profile + cost events. GET — current user's profile.
-import { appendFileSync } from "fs";
+// store profile + cost events, then populate the events feed: seed-floor
+// matches synchronously (ADR-0005: /events is never empty on first load) and
+// the live match run in the background. GET — current user's profile.
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { persistCostEvents } from "@/lib/supabase/costs";
 import { OnboardingFormSchema } from "@/lib/nonprofit/onboarding-schema";
 import { extractNonprofitProfile } from "@/lib/nonprofit/extract";
 import { rowToNonprofitProfile, type NonprofitProfileRow } from "@/lib/nonprofit/profile-row";
+import { runSeedFloor } from "@/lib/events/floor";
+import { createMatchRun, runLiveMatchTracked, updateMatchRun } from "@/lib/events/runs";
 import { CostMeter, newRunId } from "@/lib/ai/cost";
+import type { MatchRun } from "@/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
-
-const DEBUG_LOG = "/Users/andrewz/WorkSpace/Hackathons/volitionai/.cursor/debug-704b62.log";
-function agentLog(
-  location: string,
-  message: string,
-  data: Record<string, unknown>,
-  hypothesisId: string,
-) {
-  const entry = JSON.stringify({
-    sessionId: "704b62",
-    location,
-    message,
-    data,
-    timestamp: Date.now(),
-    hypothesisId,
-  });
-  try {
-    appendFileSync(DEBUG_LOG, `${entry}\n`);
-  } catch {
-    /* ignore */
-  }
-  fetch("http://127.0.0.1:7298/ingest/d352d076-9445-40a2-832a-00aecfd01dfd", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "704b62" },
-    body: entry,
-  }).catch(() => {});
-}
+// Extraction is quick, but the background live run scheduled via after()
+// shares this budget on serverless hosts.
+export const maxDuration = 180;
 
 function isMissingProfileGeographyColumn(error: unknown): boolean {
   const message =
@@ -96,25 +77,11 @@ export async function POST(req: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    // #region agent log
-    agentLog("route.ts:POST:auth", "auth check", { hasUser: !!user, userIdPrefix: user?.id?.slice(0, 8) }, "A");
-    // #endregion
     if (!user) {
       return NextResponse.json({ error: "Not signed in." }, { status: 401 });
     }
 
     const parsed = OnboardingFormSchema.safeParse(await req.json());
-    // #region agent log
-    agentLog(
-      "route.ts:POST:parse",
-      "schema parse",
-      {
-        success: parsed.success,
-        firstIssue: parsed.success ? null : parsed.error.issues[0]?.message,
-      },
-      "B",
-    );
-    // #endregion
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message ?? "Invalid form data." },
@@ -139,17 +106,6 @@ export async function POST(req: NextRequest) {
     // LOCAL extraction ($0; metered cloud fallback if Ollama is unreachable).
     const meter = new CostMeter(newRunId());
     const extracted = await extractNonprofitProfile(meter, form);
-    // #region agent log
-    agentLog(
-      "route.ts:POST:extract",
-      "extraction ok",
-      {
-        hasMissionSummary: !!extracted?.missionSummary,
-        causeKeywordCount: extracted?.causeKeywords?.length ?? 0,
-      },
-      "C",
-    );
-    // #endregion
 
     const baseProfileInsert = {
       user_id: user.id,
@@ -180,20 +136,7 @@ export async function POST(req: NextRequest) {
       .insert(profileInsert)
       .select("*")
       .single();
-    let geogRetry = false;
     if (insertError && isMissingProfileGeographyColumn(insertError)) {
-      geogRetry = true;
-      // #region agent log
-      agentLog(
-        "route.ts:POST:geogRetry",
-        "retrying insert without geography columns",
-        {
-          code: (insertError as { code?: string }).code,
-          message: (insertError as { message?: string }).message,
-        },
-        "D",
-      );
-      // #endregion
       console.warn(
         "[/api/nonprofit/profile POST] profile geography columns are not applied yet; creating profile without geography fields.",
       );
@@ -205,24 +148,6 @@ export async function POST(req: NextRequest) {
       row = retry.data;
       insertError = retry.error;
     }
-    // #region agent log
-    agentLog(
-      "route.ts:POST:insert",
-      "db insert result",
-      {
-        hasRow: !!row,
-        geogRetry,
-        insertError: insertError
-          ? {
-              code: (insertError as { code?: string }).code,
-              message: (insertError as { message?: string }).message,
-              details: (insertError as { details?: string }).details,
-            }
-          : null,
-      },
-      "D",
-    );
-    // #endregion
     if (insertError) throw insertError;
 
     const profile = rowToNonprofitProfile(row as NonprofitProfileRow);
@@ -232,23 +157,49 @@ export async function POST(req: NextRequest) {
       entityId: profile.id,
     });
 
+    // Seed floor (ADR-0005): populate the feed from the corpus right now, $0,
+    // so the user lands on /events with cards already there. A floor failure
+    // must not fail onboarding - the live run can still populate the feed.
+    const admin = createSupabaseAdminClient();
+    let matchRun: MatchRun | null = null;
+    let floorMatches = 0;
+    try {
+      const floor = await runSeedFloor(admin, profile);
+      floorMatches = floor.matches.length;
+      matchRun = await createMatchRun(admin, profile.id, "floor_ready");
+      if (floor.relaxed) {
+        await updateMatchRun(admin, matchRun.id, {
+          notices: [
+            "Not enough exact matches; results were broadened to related causes or virtual events (labeled by tier).",
+          ],
+        });
+      }
+    } catch (err) {
+      console.error("[/api/nonprofit/profile POST] seed floor failed:", err);
+      matchRun = await createMatchRun(admin, profile.id, "failed").catch(() => null);
+      if (matchRun) {
+        await updateMatchRun(admin, matchRun.id, {
+          error: "Initial matching failed; retry from the events page.",
+          finished: true,
+        }).catch(() => {});
+      }
+    }
+
+    // Live run in the background: the response returns immediately with the
+    // floor in place; the feed polls match_runs and merges live results.
+    if (matchRun && matchRun.status !== "failed") {
+      const runId = matchRun.id;
+      after(() => runLiveMatchTracked(admin, profile, runId));
+    }
+
     return NextResponse.json({
       profile,
       receipt: meter.receipt(),
       costsPersisted: persisted,
+      floorMatches,
+      matchRunId: matchRun?.id ?? null,
     });
   } catch (err) {
-    // #region agent log
-    agentLog(
-      "route.ts:POST:catch",
-      "handler error",
-      {
-        error: err instanceof Error ? err.message : String(err),
-        name: err instanceof Error ? err.name : "unknown",
-      },
-      "E",
-    );
-    // #endregion
     console.error("[/api/nonprofit/profile POST]", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to save profile." },

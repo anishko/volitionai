@@ -87,7 +87,6 @@ export const OnboardingFormSchema = z.object({
 
 export type OnboardingForm = z.infer<typeof OnboardingFormSchema>;
 
-// Loose partial the conversational intake fills incrementally — every field
-// optional so a half-finished conversation still validates and renders.
+// Partial shape for incremental profile edits (e.g. future /profile page).
 export const PartialOnboardingSchema = OnboardingFormSchema.partial();
 export type PartialOnboarding = z.infer<typeof PartialOnboardingSchema>;

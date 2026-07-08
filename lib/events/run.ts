@@ -136,7 +136,7 @@ export async function runEventMatch(
     )
     .map(({ event }) => provisionalToScraped(event));
 
-  let discovered: Event[] = [];
+  const discovered: Event[] = [];
   let inserted = 0;
   let merged = 0;
 

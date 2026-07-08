@@ -63,6 +63,9 @@ export interface ScrapeOutcome {
   pagesScraped: number;
   pagesFailed: number;
   skippedReason?: string; // set when the whole stage was skipped (no API key)
+  /** True when the Firecrawl page ceiling truncated the candidate list —
+   *  partial results by design (PRD budget rule), surfaced as a run notice. */
+  stoppedAtBudget: boolean;
 }
 
 const CAUSE_VOCAB = CAUSE_AREAS.map((c) => c.value).filter((v) => v !== "other");
@@ -144,10 +147,15 @@ export async function scrapeEventCandidates(
       pagesScraped: 0,
       pagesFailed: 0,
       skippedReason: "Firecrawl not configured; live-discovered events were not deep-scraped.",
+      stoppedAtBudget: false,
     };
   }
 
-  const toScrape = candidates.slice(0, Math.min(maxPages, MAX_FIRECRAWL_PAGES_PER_RUN));
+  // Hard budget cap (PRD: max 15 Firecrawl pages per match run). stoppedAtBudget
+  // reports only when the ceiling itself binds — not the smaller per-run default.
+  const cap = Math.min(maxPages, MAX_FIRECRAWL_PAGES_PER_RUN);
+  const stoppedAtBudget = candidates.length > MAX_FIRECRAWL_PAGES_PER_RUN;
+  const toScrape = candidates.slice(0, cap);
   const events: ScrapedEvent[] = [];
   let pagesScraped = 0;
   let pagesFailed = 0;
@@ -155,6 +163,8 @@ export async function scrapeEventCandidates(
   // Sequential on purpose: local extraction serializes on Ollama anyway, and
   // one slow page must not starve the rest of the run.
   for (const candidate of toScrape) {
+    // In-loop hard stop: never exceed the page ceiling even if cap logic changes.
+    if (pagesScraped >= MAX_FIRECRAWL_PAGES_PER_RUN) break;
     const started = Date.now();
     try {
       const page = await firecrawlScrape(candidate.url);
@@ -177,5 +187,5 @@ export async function scrapeEventCandidates(
     }
   }
 
-  return { events, pagesScraped, pagesFailed };
+  return { events, pagesScraped, pagesFailed, stoppedAtBudget };
 }

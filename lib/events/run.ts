@@ -8,8 +8,8 @@ import { CostMeter, newRunId } from "@/lib/ai/cost";
 import type { DonorSignal, Event, EventMatch, NonprofitProfile } from "@/types";
 import type { CostEvent, CostReceipt } from "@/types/cost";
 import { planEventQueries } from "./plan";
-import { searchEventCandidates, type EventSearchCandidate } from "./search";
-import { scrapeEventCandidates } from "./scrape";
+import { searchEventCandidates, MAX_TAVILY_SEARCHES_PER_RUN, type EventSearchCandidate } from "./search";
+import { scrapeEventCandidates, MAX_FIRECRAWL_PAGES_PER_RUN } from "./scrape";
 import { enrichDonorSignals } from "./enrich";
 import { filterCandidates, scoreEvent } from "./filter";
 import { explainMatches } from "./explain";
@@ -42,6 +42,9 @@ export interface EventMatchRunMeta {
    *  (citation or no signal). A receipt/observability stat — a persistently
    *  high count points at scraping that needs improvement. */
   matchesDroppedForNoCitation: number;
+  /** Human-readable notes for each budget ceiling that truncated work this run
+   *  (Tavily credits / Firecrawl pages). Empty when nothing hit a cap. */
+  budgetStops: string[];
   notices: string[];
 }
 
@@ -96,6 +99,7 @@ export async function runEventMatch(
   const runId = newRunId();
   const meter = new CostMeter(runId);
   const notices: string[] = [];
+  const budgetStops: string[] = [];
 
   // Candidate set always starts from the shared corpus (seed + prior finds).
   const corpus = await loadEventCorpus(admin);
@@ -115,6 +119,11 @@ export async function runEventMatch(
     try {
       const search = await searchEventCandidates(meter, queries);
       candidates = search.candidates;
+      if (search.stoppedAtBudget) {
+        const note = `Live search stopped at the ${MAX_TAVILY_SEARCHES_PER_RUN}-credit Tavily budget; some planned queries were not run.`;
+        budgetStops.push(note);
+        notices.push(note);
+      }
       if (search.searchesFailed > 0) {
         notices.push(
           `${search.searchesFailed} of ${search.searchesRun + search.searchesFailed} live searches failed; results may be partial.`,
@@ -138,6 +147,11 @@ export async function runEventMatch(
   // 3. SCRAPE (Firecrawl + local extraction, capped).
   const scrape = await scrapeEventCandidates(meter, candidates, SCRAPE_PAGES_DEFAULT);
   if (scrape.skippedReason) notices.push(scrape.skippedReason);
+  if (scrape.stoppedAtBudget) {
+    const note = `Scraping stopped at the ${MAX_FIRECRAWL_PAGES_PER_RUN}-page Firecrawl budget; some candidate pages were not scraped.`;
+    budgetStops.push(note);
+    notices.push(note);
+  }
   if (scrape.pagesFailed > 0) {
     notices.push(`${scrape.pagesFailed} event page(s) could not be scraped; results may be partial.`);
   }
@@ -210,6 +224,7 @@ export async function runEventMatch(
         donorSignalEvents: signalsByEvent.size,
         cloudModel: "",
         matchesDroppedForNoCitation: 0,
+        budgetStops,
         notices,
       },
     };
@@ -285,6 +300,7 @@ export async function runEventMatch(
       donorSignalEvents: signalsByEvent.size,
       cloudModel: explained.model,
       matchesDroppedForNoCitation,
+      budgetStops,
       notices,
     },
   };

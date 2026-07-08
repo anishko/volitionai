@@ -1,0 +1,9 @@
+{"sessionId":"704b62","location":"route.ts:POST:auth","message":"auth check","data":{"hasUser":true,"userIdPrefix":"3f7579cf"},"timestamp":1783482165805,"hypothesisId":"A"}
+{"sessionId":"704b62","location":"route.ts:POST:parse","message":"schema parse","data":{"success":true,"firstIssue":null},"timestamp":1783482165808,"hypothesisId":"B"}
+{"sessionId":"704b62","location":"route.ts:POST:auth","message":"auth check","data":{"hasUser":true,"userIdPrefix":"3f7579cf"},"timestamp":1783482165805,"hypothesisId":"A"}
+{"sessionId":"704b62","location":"route.ts:POST:parse","message":"schema parse","data":{"success":true,"firstIssue":null},"timestamp":1783482165808,"hypothesisId":"B"}
+{"sessionId":"704b62","location":"route.ts:POST:extract","message":"extraction ok","data":{"hasMissionSummary":true,"causeKeywordCount":3},"timestamp":1783482167789,"hypothesisId":"C"}
+{"sessionId":"704b62","location":"route.ts:POST:extract","message":"extraction ok","data":{"hasMissionSummary":true,"causeKeywordCount":3},"timestamp":1783482167789,"hypothesisId":"C"}
+{"sessionId":"704b62","location":"route.ts:POST:insert","message":"db insert result","data":{"hasRow":true,"geogRetry":false,"insertError":null},"timestamp":1783482167843,"hypothesisId":"D"}
+{"sessionId":"704b62","location":"route.ts:POST:insert","message":"db insert result","data":{"hasRow":true,"geogRetry":false,"insertError":null},"timestamp":1783482167843,"hypothesisId":"D"}
+{"sessionId":"704b62","location":"onboarding-form.tsx:submit","message":"client response","data":{"status":200,"ok":true,"error":null},"timestamp":1783482167915,"hypothesisId":"client"}

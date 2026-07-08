@@ -8,7 +8,7 @@ import { buildCandidatePool } from "./candidates";
 import { finalistsToScrape } from "./finalists";
 import { planEventQueries } from "./plan";
 import { provisionalToScraped, rebuildEventPool } from "./pool";
-import { scrapeEventCandidates, MAX_FIRECRAWL_PAGES_PER_RUN } from "./scrape";
+import { scrapeEventCandidates, MAX_SCRAPE_PAGES_PER_RUN } from "./scrape";
 import { enrichDonorSignals } from "./enrich";
 import { filterCandidates, scoreEvent, type TieredEvent } from "./filter";
 import { explainMatches } from "./explain";
@@ -154,7 +154,7 @@ export async function runEventMatch(
   const scrape = await scrapeEventCandidates(meter, scrapeTargets, SCRAPE_PAGES_DEFAULT);
   if (scrape.skippedReason) notices.push(scrape.skippedReason);
   if (scrape.stoppedAtBudget) {
-    const note = `Scraping stopped at the ${MAX_FIRECRAWL_PAGES_PER_RUN}-page Firecrawl budget; some finalist pages were not scraped.`;
+    const note = `Scraping stopped at the ${MAX_SCRAPE_PAGES_PER_RUN}-page deep-scrape page budget; some finalist pages were not scraped.`;
     budgetStops.push(note);
     notices.push(note);
   }

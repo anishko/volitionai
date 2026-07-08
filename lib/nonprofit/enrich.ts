@@ -10,7 +10,10 @@ import { z } from "zod";
 import { tavilyExtract } from "@/lib/data/tavily";
 import { ollamaChat, OLLAMA_MODEL } from "@/lib/ai/ollama";
 import { anthropicMessage } from "@/lib/ai/anthropic";
-import type { CostMeter } from "@/lib/ai/cost";
+import { CostMeter, newRunId } from "@/lib/ai/cost";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { persistCostEvents } from "@/lib/supabase/costs";
+import type { NonprofitProfile } from "@/types";
 import { looseJsonParse } from "@/lib/pipeline/schema";
 
 export const EnrichmentSuggestionsSchema = z.object({
@@ -146,4 +149,54 @@ export async function enrichFromWebsite(
   });
   const fields = EnrichmentSuggestionsSchema.parse(looseJsonParse(r.text));
   return { status: "ready", fields, sourceUrls };
+}
+
+/**
+ * Background enrichment for one profile. Scrapes the site, extracts suggestions,
+ * and writes a terminal envelope under extracted_profile.suggestedEnrichments.
+ * NEVER throws — every path (including the failure-path DB write) is wrapped so
+ * a background error cannot affect onboarding, the seed floor, or the live match
+ * run. Fail-closed: a "failed" envelope carries no partial fields.
+ */
+export async function runEnrichment(
+  admin: SupabaseClient,
+  profile: NonprofitProfile,
+  now?: string,
+): Promise<void> {
+  const generatedAt = now ?? new Date().toISOString();
+  const meter = new CostMeter(newRunId());
+  const base = (profile.extractedProfile ?? {}) as Record<string, unknown>;
+
+  let envelope: EnrichmentEnvelope;
+  try {
+    const outcome = await enrichFromWebsite(meter, profile.website ?? "");
+    envelope = buildEnrichmentEnvelope(outcome, generatedAt);
+  } catch (err) {
+    console.error("[nonprofit/enrich] enrichment failed:", err instanceof Error ? err.message : err);
+    envelope = buildEnrichmentEnvelope({ status: "failed" }, generatedAt);
+  }
+
+  // Persist the envelope (nested key) — confirmed fields in `base` are untouched.
+  try {
+    const { error } = await admin
+      .from("nonprofit_profiles")
+      .update({ extracted_profile: { ...base, suggestedEnrichments: envelope } })
+      .eq("id", profile.id);
+    if (error) throw error;
+  } catch (err) {
+    console.error("[nonprofit/enrich] envelope write failed:", err instanceof Error ? err.message : err);
+  }
+
+  // Persist cost events (best-effort; a receipt-log failure must not surface).
+  try {
+    if (meter.events.length > 0) {
+      await persistCostEvents({
+        events: meter.events,
+        runType: "profile_extraction",
+        entityId: profile.id,
+      });
+    }
+  } catch (err) {
+    console.error("[nonprofit/enrich] cost persist failed:", err instanceof Error ? err.message : err);
+  }
 }

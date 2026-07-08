@@ -81,6 +81,82 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+import { runEnrichment } from "./enrich";
+import type { NonprofitProfile } from "@/types";
+
+function fakeAdmin(updateImpl: (payload: unknown) => Promise<{ error: unknown }>) {
+  const eq = vi.fn(async (_col: string, _val: string) => ({ error: null }));
+  const update = vi.fn((payload: unknown) => ({
+    eq: async (_c: string, _v: string) => updateImpl(payload),
+  }));
+  return { from: vi.fn(() => ({ update })), _update: update } as any;
+}
+
+function baseProfile(): NonprofitProfile {
+  return {
+    id: "p1",
+    userId: "u1",
+    orgName: "Acme",
+    website: "https://acme.org",
+    causeAreas: [],
+    currentDonorMix: [],
+    targetDonorType: [],
+    citiesOfInterest: [],
+    regionsOfInterest: [],
+    extractedProfile: {
+      missionSummary: "CONFIRMED",
+      causeKeywords: ["water"],
+      donorProfile: "d",
+      geographySummary: "g",
+      eventSearchHints: ["h"],
+    },
+    createdAt: "t",
+    updatedAt: "t",
+  } as NonprofitProfile;
+}
+
+describe("runEnrichment (fail-closed persistence)", () => {
+  it("preserves confirmed fields and nests the envelope", async () => {
+    vi.stubEnv("TAVILY_API_KEY", "k");
+    vi.mocked(tavilyExtract).mockResolvedValue({
+      perUrl: [{ url: "https://acme.org/", content: "We fund water." }],
+      failed: [],
+      latencyMs: 1,
+    });
+    vi.mocked(ollamaChat).mockResolvedValue({
+      text: JSON.stringify({ missionLanguage: "We fund water.", programAreas: [], namedSponsors: [], voiceTraits: [] }),
+      model: "qwen3:8b", inputTokens: 1, outputTokens: 1, latencyMs: 1,
+    });
+    let captured: any;
+    const admin = fakeAdmin(async (payload) => { captured = payload; return { error: null }; });
+    await runEnrichment(admin, baseProfile(), "2026-07-08T00:00:00.000Z");
+    expect(captured.extracted_profile.missionSummary).toBe("CONFIRMED");
+    expect(captured.extracted_profile.causeKeywords).toEqual(["water"]);
+    expect(captured.extracted_profile.suggestedEnrichments.status).toBe("ready");
+  });
+
+  it("writes a fail-closed 'failed' envelope when extraction throws", async () => {
+    vi.stubEnv("TAVILY_API_KEY", "k");
+    vi.mocked(tavilyExtract).mockRejectedValue(new Error("boom"));
+    let captured: any;
+    const admin = fakeAdmin(async (payload) => { captured = payload; return { error: null }; });
+    await runEnrichment(admin, baseProfile(), "2026-07-08T00:00:00.000Z");
+    expect(captured.extracted_profile.suggestedEnrichments).toEqual({
+      status: "failed",
+      sourceUrls: [],
+      generatedAt: "2026-07-08T00:00:00.000Z",
+    });
+    expect(captured.extracted_profile.suggestedEnrichments.fields).toBeUndefined();
+    expect(captured.extracted_profile.missionSummary).toBe("CONFIRMED");
+  });
+
+  it("never throws even when the DB write itself errors", async () => {
+    vi.stubEnv("TAVILY_API_KEY", "");
+    const admin = fakeAdmin(async () => { throw new Error("db down"); });
+    await expect(runEnrichment(admin, baseProfile(), "t")).resolves.toBeUndefined();
+  });
+});
+
 describe("enrichFromWebsite", () => {
   it("skips when TAVILY_API_KEY is unset", async () => {
     vi.stubEnv("TAVILY_API_KEY", "");

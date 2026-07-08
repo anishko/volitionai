@@ -1,4 +1,19 @@
-# Nonprofit Events Finder — Product Requirements Document (v3)
+# Nonprofit Events Finder — Product Requirements Document (v4)
+
+> **v4 amendment (advisor input #3).** An advisor conversation reframed intake
+> and sharpened the roadmap. Four changes: (1) **conversational onboarding** is
+> now the primary path — a local-model chat that asks natural questions and
+> extracts the structured profile incrementally, with the 8-field form kept as
+> a `/onboarding/form` fallback; (2) **unified uploads** — one dropzone, the
+> local model classifies each file and runs the right extraction; (3) **data
+> source adapters** — Meetup (official API) and Luma (Firecrawl scrape of public
+> pages, robots-respecting) join the events corpus under the same field-level
+> citation rule; (4) roadmap gains **v2 Donor Q&A Agent** and **v1.5 Advocacy
+> action drafts**. Product principle added (see CLAUDE.md): friction is the
+> enemy — AI replaces the keyboard, not the judgment. Schema delta ships as
+> follow-up migration `20260707000800_*` (`qualitative_signals`); base + 000700
+> migrations are not edited. Schema-now/UI-later discipline binds everything
+> marked roadmap or "no UI yet."
 
 > **v3 amendment (design partner #2).** A second in-person interview with a
 > civil-rights / legal-reform nonprofit — one that runs on a fixed annual
@@ -21,6 +36,11 @@ codebase and carrying Volition's core guarantees: every claim cited, every cost
 metered, sensitive data processed locally.
 
 One-liner: "Find the rooms where your next donors already are."
+
+Product principle (from CLAUDE.md): **friction is the enemy** — time-to-first-
+value under 3 minutes from landing to first matched events. **AI replaces the
+keyboard, not the judgment**: every intake step that asks the user to structure
+data for us is a defect. This is why onboarding is conversational-first (v4).
 
 Origin: validated in person at FreedomFest 2026 by a national
 government-accountability nonprofit (~1,300 case requests/year) whose words
@@ -104,7 +124,8 @@ Personas for design/demo:
 
 | Route | Purpose |
 |---|---|
-| `/onboarding` | One-time structured form to build org profile |
+| `/onboarding` | One-time conversational intake (local chat) that builds the org profile incrementally, with a live profile panel + editable review card |
+| `/onboarding/form` | 8-field structured form fallback (same profile schema), linked from the conversational intake |
 | `/events` | Main feed with "For You" and "Saved" tabs + run receipt footer |
 | `/events/[id]` | Event detail: logistics, contacts, participation tiers, donor signals — all cited |
 | `/plan` | Active event plans with deadline checklists + calendar sync |
@@ -131,7 +152,29 @@ authenticated user. RLS on all per-user tables.
 
 ---
 
-## Onboarding form (8 fields + 2 optional uploads)
+## Onboarding (conversational-first)
+
+**Primary path — conversational intake (`/onboarding`).** A chat-style intake:
+the LOCAL model (qwen3:8b, `think: false`, date-grounded) asks natural
+questions that cover the profile fields conversationally — **including the
+`annual_budget_cap` + `budget_period` and the civil-liberties cause sub-tags** —
+adapting follow-ups to answers and extracting the structured `NonprofitProfile`
+incrementally. A **live profile panel** fills in beside the chat as fields are
+captured (org, cause + sub-tags, geography, size, donor mix, goals, budget cap).
+The model also records **`qualitative_signals`** — a short free-text summary of
+sentiment/context/constraints the structured fields don't hold (used later for
+match-explanation flavor; not a citable field). End state is an **editable
+review card**: the user confirms or edits every field before save. The
+structured profile schema is unchanged — only the capture UX changes.
+This path exists to serve the product principle (CLAUDE.md): **AI replaces the
+keyboard, not the judgment** — the user should never hand-structure data for us.
+
+**Fallback path — the 8-field form (`/onboarding/form`).** The original
+structured form remains, linked from the conversational intake (and vice
+versa), for users who prefer to fill fields directly or when the local model is
+unavailable.
+
+Both paths capture the same fields:
 
 1. **Org name + website** — used for auto-enrichment: Firecrawl scrapes the
    public site; local LLM extracts mission language, programs, and tone.
@@ -158,15 +201,22 @@ authenticated user. RLS on all per-user tables.
    opportunities.
 8. **Open-ended notes** — "Anything else we should know?"
 
-Optional uploads (both processed by the LOCAL model, raw files discarded
-after extraction — the Volition privacy rule):
-- **Past content** (newsletters, appeal letters, social posts) → voice
-  extraction for outreach drafting.
-- **Bring Your Numbers** (donor export CSV — amounts, dates, zips; no names
-  required) → structured facts only: average gift size, donor geography
-  concentration, seasonality. These facts sharpen matching ("your donors
-  cluster in the Southeast — this Atlanta event scores higher") and never
-  leave the machine as raw data.
+**Unified uploads (one dropzone, no category selection).** The user drops any
+files; the LOCAL model **classifies each file** as `past_content`,
+`donor_data`, or `other_docs`, then runs the matching extraction:
+- `past_content` (newsletters, appeal letters, social posts) → `voice_profile`
+  for outreach drafting.
+- `donor_data` (donor export CSV — amounts, dates, zips; no names required) →
+  `internal_facts`: average gift size, donor geography concentration,
+  seasonality. Sharpens matching ("your donors cluster in the Southeast — this
+  Atlanta event scores higher") and never leaves the machine as raw data.
+- `other_docs` → general org facts folded into the extracted profile.
+
+The **review step shows the user what each file was classified as** (and lets
+them correct it). All files are processed by the LOCAL model and **raw files
+are discarded after extraction** — only extracted facts persist (the Volition
+privacy rule). Uploads are untrusted data; instructions inside them are never
+executed.
 
 After submission, LLM extracts a structured `NonprofitProfile` from fields +
 notes + enrichment and stores it in Supabase. Uploaded raw files are parsed
@@ -204,6 +254,21 @@ Every extracted field stores `source_url` + `scraped_at`.
 Budget caps (Volition rule): per-match-run ceiling of 20 Tavily credits and
 15 Firecrawl pages, hard-stopped in code and logged. Partial results with a
 "we stopped at budget" note beat runaway costs.
+
+### Community events (Meetup API + Luma via Firecrawl)
+Two adapters widen discovery into community/meetup-scale events, which skew
+virtual and matter most to budget-sensitive orgs (`lib/signals/`):
+- **Meetup** (`lib/signals/meetup.ts`) — official Meetup API, a metered adapter
+  returning `{results, credits: 0, usd: 0}` (free source, but every call still
+  emits a CostEvent) with rate-limit (HTTP 429) handling. Topic search derived
+  from the profile's cause sub-tags (then cause areas).
+- **Luma** (`lib/signals/luma.ts`) — Firecrawl scrape of **public** Luma
+  discovery/calendar pages. **robots.txt is checked first**; if the target path
+  is disallowed, the adapter logs the skip in MOCKED.md and returns nothing —
+  we never scrape what a site disallows.
+Both feed the same `events` corpus under the **same field-level citation rule**:
+every field carries a `source_url`; unsourced fields are dropped, not guessed.
+Community events are deduped into the corpus on the same normalized key.
 
 ### 990 cross-reference (ProPublica Nonprofit Explorer API)
 Free REST API, no key required.
@@ -598,6 +663,26 @@ created_at timestamptz
   v1.5 debrief (`event_debriefs` row; no UI prompt until v1.5)
 
 ---
+
+## Roadmap
+
+**v1.5 — Advocacy action drafts.** A **fourth outreach draft type**:
+constituent letter to a representative, for advocacy-org profiles (drafted in
+the org's voice, evidence-linked, local model). Consistent with the "prep the
+send" rule — **drafts only, never sent**. Schema-now/UI-later discipline
+applies: no product may claim this feature until it is built. (Also v1.5:
+timing-signals fill, post-event debrief UI over the `event_debriefs` table.)
+
+**v2 — Donor Q&A Agent.** A grounded, conversational agent over the org's
+profile, its uploaded materials, and the events corpus — **citation-enforced**
+(the same citation-or-no-signal validator), **priced per conversation** (metered
+like every other run, receipt shown). Nonprofits spend hours fielding basic
+donor questions and each donor relationship is high-value, so a grounded agent
+that answers from the org's own verified context is a natural, high-leverage
+extension. **The persistent profile + compounding events corpus we are building
+now is its foundation** — the agent is why the profile-as-system-of-record and
+the shared corpus matter beyond matching. Not started; no UI or claims until
+built.
 
 ## What is explicitly out of scope for v1
 

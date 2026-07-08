@@ -40,3 +40,37 @@ A: "The freedom claim is about the USER's independence — their data
 local, their model choice open, their costs visible. That's
 architecture, not licensing. The proprietary layer funds the
 benchmarking dataset that makes every user's results better."
+
+## Decentralization posture
+
+**Local-first compute = user data sovereignty (now).** Extraction, planning,
+ranking, and drafting run on the user's own hardware via Ollama. Uploaded
+documents and donor numbers are parsed locally and discarded; only extracted
+facts persist. The user's sensitive data does not leave their machine as a
+condition of using the product — that is data sovereignty in the architecture,
+not a policy promise.
+
+**Model-agnostic router = no gatekeeper (now).** The router picks the cheapest
+capable model per stage and treats cloud models as interchangeable suppliers.
+Inference is *bought on an open competitive market* rather than rented from a
+single vendor who could gatekeep access, price, or terms. Switching a supplier
+is a config change, not a rewrite.
+
+**Pluggable inference adapters = decentralized marketplaces are on the table
+(future, evaluated).** Because inference is behind an adapter, decentralized
+inference marketplaces — e.g. Morpheus-style peer-to-peer inference — are a
+genuine future provider option, attractive for privacy and for adding provider
+competition. We are deferring them for now on reliability grounds (no failover
+guarantees) and token friction (paying for inference in a marketplace token
+adds UX and treasury overhead). Evaluated, not adopted.
+
+**Corpus cryptographic verifiability (planned when multi-contributor).** Today
+the events corpus is written by our own server-side pipeline, so field-level
+`source_url` + `verified_at` stamps are sufficient provenance. When the corpus
+becomes multi-contributor, we plan signed records / Merkle checksums so any
+consumer can verify a record's integrity and origin independently of us.
+
+**No token, ever.** We will not issue a token. A token solves a problem we do
+not have (bootstrapping a two-sided network with speculative incentives) and
+would import volatility, regulatory surface, and misaligned incentives into a
+product whose entire trust proposition is factual, sourced, and metered.

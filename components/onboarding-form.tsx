@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   CAUSE_AREAS,
+  CAUSE_SUB_TAGS,
   GEOGRAPHY_FOCUS,
   ORG_SIZES,
   DONOR_TYPES,
@@ -101,6 +102,9 @@ export function OnboardingForm() {
   const [targetDonorType, setTargetDonorType] = useState<string[]>([]);
   const [primaryGoal, setPrimaryGoal] = useState<string[]>([]);
   const [openEndedNotes, setOpenEndedNotes] = useState("");
+  const [causeSubTags, setCauseSubTags] = useState<string[]>([]);
+  const [annualBudgetCap, setAnnualBudgetCap] = useState("");
+  const [budgetPeriod, setBudgetPeriod] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,6 +121,9 @@ export function OnboardingForm() {
       targetDonorType,
       primaryGoal: primaryGoal[0],
       openEndedNotes: openEndedNotes || undefined,
+      causeSubTags: causeAreas.includes("civil_liberties") ? causeSubTags : [],
+      annualBudgetCap: annualBudgetCap ? Number(annualBudgetCap) : undefined,
+      budgetPeriod: budgetPeriod || undefined,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Please complete the form.");
@@ -176,6 +183,19 @@ export function OnboardingForm() {
         />
       </Field>
 
+      {causeAreas.includes("civil_liberties") && (
+        <Field label="Civil-liberties focus" hint="We match on these sub-tags.">
+          <ChipGroup
+            label="Civil-liberties focus"
+            options={CAUSE_SUB_TAGS}
+            value={causeSubTags}
+            onChange={setCauseSubTags}
+            multi
+            disabled={submitting}
+          />
+        </Field>
+      )}
+
       <Field label="Geographic focus">
         <div className="space-y-2">
           <ChipGroup
@@ -205,6 +225,29 @@ export function OnboardingForm() {
           multi={false}
           disabled={submitting}
         />
+      </Field>
+
+      <Field
+        label="Annual conference budget (optional)"
+        hint="Powers budget-capped annual planning."
+      >
+        <div className="flex gap-2">
+          <Input
+            value={annualBudgetCap}
+            onChange={(e) => setAnnualBudgetCap(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="Cap ($)"
+            disabled={submitting}
+            inputMode="numeric"
+            aria-label="Annual budget cap"
+          />
+          <Input
+            value={budgetPeriod}
+            onChange={(e) => setBudgetPeriod(e.target.value)}
+            placeholder='Period (e.g. "2027")'
+            disabled={submitting}
+            aria-label="Budget period"
+          />
+        </div>
       </Field>
 
       <Field label="Current donor mix" hint="Who funds you today?">

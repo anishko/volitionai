@@ -92,6 +92,11 @@ export async function POST(req: NextRequest) {
         primary_goal: form.primaryGoal,
         open_ended_notes: form.openEndedNotes ?? null,
         extracted_profile: extracted,
+        // amendment #2/#3 columns (migrations 000700/000800).
+        cause_sub_tags: form.causeSubTags ?? [],
+        annual_budget_cap: form.annualBudgetCap ?? null,
+        budget_period: form.budgetPeriod ?? null,
+        qualitative_signals: form.qualitativeSignals ?? null,
       })
       .select("*")
       .single();

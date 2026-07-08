@@ -37,6 +37,12 @@ One optional drop zone. One button. Then a dashboard of cards.
 No settings pages, no configuration, no jargon. If a screen needs
 explaining, redesign it.
 
+## Product principle
+Friction is the enemy — time-to-first-value under 3 minutes from landing
+to first matched events. AI replaces the keyboard, not the judgment:
+every intake step that asks the user to structure data for us is a
+defect. (This is why nonprofit onboarding is conversational-first.)
+
 ## Idea lanes
 trend / comparable ("orgs like you" — sponsors, plays, positioning) /
 opportunity (leads, timing, channels) / law (minor: rules as angles)

@@ -38,6 +38,18 @@ export const DONOR_TYPES = [
   { value: "government", label: "Government grants" },
 ] as const;
 
+// Civil-liberties cause sub-taxonomy (amendment #2). Revealed when the
+// "civil_liberties" cause area is selected; the matcher filters on sub-tags
+// when present. Stored in nonprofit_profiles.cause_sub_tags.
+export const CAUSE_SUB_TAGS = [
+  { value: "criminal legal reform", label: "Criminal legal reform" },
+  { value: "child welfare", label: "Child welfare" },
+  { value: "fourth amendment / over-policing", label: "Fourth amendment / over-policing" },
+  { value: "exoneration", label: "Exoneration" },
+  { value: "eminent domain", label: "Eminent domain" },
+  { value: "homeless defense", label: "Homeless defense" },
+] as const;
+
 export const PRIMARY_GOALS = [
   { value: "grow_individual_donors", label: "Grow individual donors" },
   { value: "land_foundation_grants", label: "Land foundation grants" },
@@ -65,6 +77,17 @@ export const OnboardingFormSchema = z.object({
   targetDonorType: z.array(z.enum(values(DONOR_TYPES))).min(1, "Pick at least one target donor type"),
   primaryGoal: z.enum(values(PRIMARY_GOALS)),
   openEndedNotes: z.string().trim().max(2000).optional(),
+  // amendment #2: budget-capped annual planning + cause sub-tags.
+  causeSubTags: z.array(z.string().trim().min(1)).max(12).default([]),
+  annualBudgetCap: z.number().nonnegative().finite().optional(),
+  budgetPeriod: z.string().trim().max(20).optional(),
+  // amendment #3: model's free-text summary of context the fields don't hold.
+  qualitativeSignals: z.string().trim().max(2000).optional(),
 });
 
 export type OnboardingForm = z.infer<typeof OnboardingFormSchema>;
+
+// Loose partial the conversational intake fills incrementally — every field
+// optional so a half-finished conversation still validates and renders.
+export const PartialOnboardingSchema = OnboardingFormSchema.partial();
+export type PartialOnboarding = z.infer<typeof PartialOnboardingSchema>;

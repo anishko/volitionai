@@ -205,6 +205,32 @@ export const TEST_PROFILE: NonprofitProfileForMatch = {
   updatedAt: new Date().toISOString(),
 };
 
+// Liberty Legal Aid — the wedge persona used for the live DB acceptance run.
+// Deliberately named as TEST data (org name + the test-pipeline@ user) so the
+// persisted rows are unmistakable in the dashboard and easy to clean up later.
+export const LIBERTY_LEGAL_AID_PROFILE: NonprofitProfileForMatch = {
+  id: "test-profile-liberty-legal-aid",   // replaced with the real DB uuid at run time
+  userId: "test-user",
+  orgName: "TEST — Liberty Legal Aid (pipeline acceptance)",
+  website: "https://example.org/liberty-legal-aid",
+  causeAreas: ["civil liberties / government accountability"],
+  causeSubTags: ["child welfare", "eminent domain", "homeless defense"],
+  geographyFocus: "national",
+  geographyDetail: "United States; donor base concentrated in the South and Mountain West",
+  orgSize: "under $500k",
+  annualBudgetCap: 15000,
+  budgetPeriod: "2027",
+  currentDonorMix: ["individual", "foundation"],
+  targetDonorType: ["foundation", "corporate"],
+  primaryGoal: "land foundation grants",
+  openEndedNotes:
+    "National government-accountability nonprofit litigating child welfare, eminent-domain, and " +
+    "homeless-defense cases. Hard annual conference budget; every trip is justified to a board. " +
+    "Certificates / CE credit valued; virtual events are first-class under budget pressure.",
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 /** Clamp a model-proposed score into the 0-100 contract (match_score check). */
 export function clampScore(n: number): number {
   if (!Number.isFinite(n)) return 0;

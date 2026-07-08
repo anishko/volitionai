@@ -234,6 +234,10 @@ export interface EventMatchRunMeta {
   degraded: string[];            // e.g. "Firecrawl unconfigured — live scrape skipped"
   notices: string[];
   cloudModel?: string;
+  persisted?: {                  // set when the run wrote to the live DB
+    events: number;              // rows upserted into public.events
+    matches: number;             // rows upserted into public.event_matches
+  };
 }
 
 export interface EventMatchRunResult {

@@ -18,6 +18,8 @@ import { filterCandidates } from "./filter";
 import { rankCandidates } from "./rank-events";
 import { enrichDonorSignals } from "./propublica";
 import { explainMatches } from "./explain";
+import { persistMatchRun } from "./persist";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { validateEventMatch, validateEventFields } from "@/lib/validate";
 import type { Evidence } from "@/lib/data/tavily";
 import type {
@@ -209,13 +211,35 @@ export async function runEventMatch(
     return b.matchScore - a.matchScore;
   });
 
-  return finish({ matches, events: returnedEvents, cloudModel });
+  // 14. PERSIST the matched events + matches to the shared corpus (service role).
+  //     Enriches the events table for every future user and records the matches.
+  //     Best-effort: DB errors degrade the run, never lose the result.
+  let persisted: { events: number; matches: number } | undefined;
+  if (opts.persist !== false && returnedEvents.length > 0) {
+    try {
+      const admin = createSupabaseAdminClient();
+      const pr = await persistMatchRun(admin, {
+        profileId: profile.id,
+        events: returnedEvents,
+        matches,
+      });
+      persisted = { events: pr.eventsUpserted, matches: pr.matchesUpserted };
+      degraded.push(...pr.degraded);
+    } catch (err) {
+      degraded.push(
+        `Supabase persistence skipped: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  return finish({ matches, events: returnedEvents, cloudModel, persisted });
 
   // --- receipt + persistence + meta assembly (shared across early returns) ---
   function finish(args: {
     matches: EventMatch[];
     events: EventWithRoi[];
     cloudModel?: string;
+    persisted?: { events: number; matches: number };
   }): EventMatchRunResult {
     const receipt = meter.receipt();
     if (opts.persist !== false) {
@@ -240,6 +264,7 @@ export async function runEventMatch(
         degraded: [...new Set(degraded)],
         notices,
         cloudModel: args.cloudModel,
+        persisted: args.persisted,
       },
     };
   }

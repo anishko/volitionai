@@ -1,32 +1,39 @@
 // Acceptance check for the Phase 2 matching pipeline — no UI required.
-// Runs the full runEventMatch pipeline for TEST_PROFILE and prints the matches
-// plus the cost receipt exactly as the API would return them.
+// Runs the full runEventMatch pipeline and prints matches + cost receipt.
+// When Supabase is configured it runs in NON-DEGRADED persistence mode:
+// creates a FK-valid TEST profile, persists events + event_matches to the live
+// DB, then reads the rows back to CONFIRM they landed. Firecrawl scraping runs
+// only when FIRECRAWL_API_KEY is set; otherwise that source degrades honestly.
 //
 //   npm run test:match          (or: npx tsx scripts/test-match.ts)
-//
-// Loads .env.local so Tavily/Anthropic keys are present. Degrades honestly when
-// a source is unconfigured (Firecrawl/Supabase/Meetup/Luma) — the receipt and
-// the "degraded" notices show exactly what ran and what didn't.
 import path from "node:path";
 
 try {
   // Node 22+ / tsx: pull keys from .env.local (standalone scripts don't inherit Next's env).
-  // Done before any pipeline call; provider keys are read at call time, not import time.
   process.loadEnvFile(path.join(process.cwd(), ".env.local"));
 } catch {
-  console.warn("(no .env.local found — relying on ambient env; Tavily/Anthropic stages may be unavailable)");
+  console.warn("(no .env.local found — relying on ambient env)");
 }
 
 import { runEventMatch } from "@/lib/signals/match";
-import { TEST_PROFILE } from "@/lib/signals/schema";
+import { LIBERTY_LEGAL_AID_PROFILE } from "@/lib/signals/schema";
+import { ensureTestProfileRow } from "@/lib/signals/profile-adapter";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { firecrawlConfigured } from "@/lib/signals/firecrawl-events";
+import type { NonprofitProfileForMatch } from "@/types";
 
+const TEST_EMAIL = "test-pipeline@volition.local";
 const usd = (n: number) => `$${n.toFixed(4)}`;
 const rule = (c = "─") => c.repeat(72);
 
-function printProfile() {
-  const p = TEST_PROFILE;
+function supabaseConfigured(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function printProfile(p: NonprofitProfileForMatch) {
   console.log(rule("═"));
   console.log(`PROFILE: ${p.orgName}`);
+  console.log(`  profile id     : ${p.id}`);
   console.log(`  cause sub-tags : ${p.causeSubTags.join(", ")}`);
   console.log(`  geography      : ${p.geographyFocus} — ${p.geographyDetail ?? ""}`);
   console.log(`  budget         : $${p.annualBudgetCap?.toLocaleString()} cap for ${p.budgetPeriod} (budget-sensitive)`);
@@ -36,19 +43,31 @@ function printProfile() {
 
 async function main() {
   const started = Date.now();
-  printProfile();
-  console.log("Running match pipeline (live: Tavily + Ollama + Anthropic; degraded: Firecrawl/ProPublica per config)...\n");
 
-  const result = await runEventMatch(TEST_PROFILE, { persist: false });
+  const dbMode = supabaseConfigured();
+  const fcMode = firecrawlConfigured();
+  console.log(`MODE: Supabase persistence = ${dbMode ? "ON" : "off"} · Firecrawl scraping = ${fcMode ? "ON" : "off"}`);
+
+  // In DB mode, create a FK-valid TEST profile and use its real uuid.
+  let profile: NonprofitProfileForMatch = LIBERTY_LEGAL_AID_PROFILE;
+  if (dbMode) {
+    const admin = createSupabaseAdminClient();
+    const { profileId, userId } = await ensureTestProfileRow(admin, TEST_EMAIL, LIBERTY_LEGAL_AID_PROFILE);
+    console.log(`Ensured TEST profile: profile_id=${profileId} (auth user ${userId}, ${TEST_EMAIL})\n`);
+    profile = { ...LIBERTY_LEGAL_AID_PROFILE, id: profileId, userId };
+  }
+
+  printProfile(profile);
+  console.log("Running match pipeline (live: Tavily + Ollama + Anthropic)...\n");
+
+  const result = await runEventMatch(profile, { persist: dbMode });
   const { matches, events, receipt, meta } = result;
   const eventById = new Map(events.map((e) => [e.id, e]));
 
   console.log(rule());
   console.log(`MATCHES (${matches.length})`);
   console.log(rule());
-  if (matches.length === 0) {
-    console.log("  (no matches survived — see notices below; an honest empty result is acceptable)\n");
-  }
+  if (matches.length === 0) console.log("  (no matches survived — an honest empty result is acceptable)\n");
   matches.forEach((m, i) => {
     const e = eventById.get(m.eventId);
     console.log(`\n${i + 1}. [${m.matchScore}] ${e?.name ?? m.eventId}`);
@@ -59,9 +78,7 @@ async function main() {
     if (m.donorSignalCallout) console.log(`   donor signal: ${m.donorSignalCallout}`);
     console.log(`   evidence (${m.evidence.length}):`);
     m.evidence.forEach((ev) => console.log(`     • ${ev.claim}\n       ↳ ${ev.sourceUrl}`));
-    if (e?.certificatesOffered.length) {
-      console.log(`   certificates: ${e.certificatesOffered.map((c) => c.type).join(", ")}`);
-    }
+    if (e?.certificatesOffered.length) console.log(`   certificates: ${e.certificatesOffered.map((c) => c.type).join(", ")}`);
   });
 
   console.log(`\n${rule()}`);
@@ -71,9 +88,7 @@ async function main() {
   console.log(`  TOTAL             : ${usd(receipt.totalUsd)}`);
   console.log(`  local token share : ${receipt.localTokenShare}%  (tokens processed at $0 on Ollama)`);
   console.log(`  by stage:`);
-  for (const s of receipt.byStage) {
-    console.log(`    - ${s.stage.padEnd(14)} ${s.provider.padEnd(11)} ${usd(s.usd)}`);
-  }
+  for (const s of receipt.byStage) console.log(`    - ${s.stage.padEnd(14)} ${s.provider.padEnd(11)} ${usd(s.usd)}`);
 
   console.log(`\n${rule()}`);
   console.log("RUN META");
@@ -85,18 +100,33 @@ async function main() {
   console.log(`  matches returned     : ${meta.matchesReturned}`);
   console.log(`  duplicates merged    : ${meta.duplicatesMerged}`);
   console.log(`  dropped (no citation): ${meta.droppedForNoCitation}`);
-  console.log(`  cloud model          : ${meta.cloudModel ?? "(none — no cloud stage ran)"}`);
-  if (meta.budgetStops.length) {
-    console.log(`  budget stops:`);
-    meta.budgetStops.forEach((b) => console.log(`      ⚠ ${b}`));
-  }
-  if (meta.degraded.length) {
-    console.log(`  degraded sources:`);
-    meta.degraded.forEach((d) => console.log(`      ○ ${d}`));
-  }
-  if (meta.notices.length) {
-    console.log(`  notices:`);
-    meta.notices.forEach((n) => console.log(`      • ${n}`));
+  console.log(`  cloud model          : ${meta.cloudModel ?? "(none)"}`);
+  if (meta.persisted) console.log(`  PERSISTED            : ${meta.persisted.events} events, ${meta.persisted.matches} matches → live DB`);
+  if (meta.budgetStops.length) { console.log(`  budget stops:`); meta.budgetStops.forEach((b) => console.log(`      ⚠ ${b}`)); }
+  if (meta.degraded.length) { console.log(`  degraded sources:`); meta.degraded.forEach((d) => console.log(`      ○ ${d}`)); }
+  if (meta.notices.length) { console.log(`  notices:`); meta.notices.forEach((n) => console.log(`      • ${n}`)); }
+
+  // DB READ-BACK: prove the rows actually landed by querying them fresh.
+  if (dbMode) {
+    console.log(`\n${rule()}`);
+    console.log("DATABASE READ-BACK (confirming rows landed)");
+    console.log(rule());
+    const admin = createSupabaseAdminClient();
+    const { count: eventsTotal } = await admin.from("events").select("id", { count: "exact", head: true });
+    const { data: matchRows, count: matchCount } = await admin
+      .from("event_matches")
+      .select("id, match_score, status, created_at, event:events(name, website)", { count: "exact" })
+      .eq("profile_id", profile.id)
+      .order("match_score", { ascending: false })
+      .limit(6);
+    console.log(`  public.events rows total                : ${eventsTotal}`);
+    console.log(`  public.event_matches for this profile   : ${matchCount}`);
+    console.log(`  sample persisted matches (score-desc):`);
+    for (const r of matchRows ?? []) {
+      const ev = (r as { event?: { name?: string; website?: string } }).event;
+      console.log(`    - [${r.match_score}] ${ev?.name ?? "?"}  (match ${String(r.id).slice(0, 8)}… · ${r.status} · ${String(r.created_at).slice(0, 19)})`);
+      console.log(`        ${ev?.website ?? ""}`);
+    }
   }
 
   console.log(`\n${rule("═")}`);

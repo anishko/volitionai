@@ -3,6 +3,7 @@
 // per the v3 migration); a nonprofit_profiles DB row maps into it here. Until a
 // real profile exists, callers pass TEST_PROFILE — this function is the ONE
 // place that changes when profiles are wired in, by design.
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { GeographyFocus, NonprofitProfileForMatch } from "@/types";
 
@@ -49,4 +50,53 @@ export async function loadProfileForMatch(profileId: string): Promise<NonprofitP
   } catch {
     return null;
   }
+}
+
+/** Ensure a real, FK-valid nonprofit_profiles row exists for a persona and return
+ *  its uuid. Used by the acceptance test so persisted event_matches satisfy the
+ *  profile_id → nonprofit_profiles → auth.users foreign keys. Idempotent: reuses
+ *  the auth user + profile on re-run. Creates clearly-labeled TEST data. */
+export async function ensureTestProfileRow(
+  admin: SupabaseClient,
+  email: string,
+  persona: NonprofitProfileForMatch,
+): Promise<{ profileId: string; userId: string }> {
+  // Find or create the auth user (email is the stable key).
+  let userId: string | undefined;
+  const { data: list } = await admin.auth.admin.listUsers();
+  userId = list?.users.find((u) => u.email === email)?.id;
+  if (!userId) {
+    const { data: created, error } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+    });
+    if (error || !created?.user) throw new Error(`createUser failed: ${error?.message}`);
+    userId = created.user.id;
+  }
+
+  // Upsert the profile (unique on user_id). Maps the persona to the DB's snake_case.
+  const row = {
+    user_id: userId,
+    org_name: persona.orgName,
+    website: persona.website ?? null,
+    cause_areas: persona.causeAreas,
+    cause_sub_tags: persona.causeSubTags,
+    annual_budget_cap: persona.annualBudgetCap ?? null,
+    budget_period: persona.budgetPeriod ?? null,
+    geography_focus: persona.geographyFocus ?? null,
+    geography_detail: persona.geographyDetail ?? null,
+    org_size: persona.orgSize ?? null,
+    current_donor_mix: persona.currentDonorMix,
+    target_donor_type: persona.targetDonorType,
+    primary_goal: persona.primaryGoal ?? null,
+    open_ended_notes: persona.openEndedNotes ?? null,
+  };
+  const { data: prof, error: pErr } = await admin
+    .from("nonprofit_profiles")
+    .upsert(row, { onConflict: "user_id" })
+    .select("id")
+    .single();
+  if (pErr || !prof) throw new Error(`profile upsert failed: ${pErr?.message}`);
+
+  return { profileId: prof.id as string, userId };
 }

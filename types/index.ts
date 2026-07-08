@@ -41,6 +41,13 @@ export type GeographyFocus = "local" | "regional" | "national" | "international"
 export type EventFormat = "in_person" | "virtual" | "hybrid";
 export type EventMatchStatus = "recommended" | "saved" | "dismissed";
 
+// Which relaxation-cascade tier produced a match (ADR-0004). Ordered from
+// strictest to loosest; the scorer applies a growing penalty down the list.
+export type MatchTier = "strict" | "geo_relaxed" | "cause_broadened" | "virtual_floor";
+
+// Server-side match-run state (ADR-0005): floor_ready -> live_running -> done | failed.
+export type MatchRunStatus = "floor_ready" | "live_running" | "done" | "failed";
+
 /** A cited fact: the claim plus the URL it was verified against. */
 export interface SourcedClaim {
   claim: string;
@@ -135,6 +142,7 @@ export interface Event {
   format?: EventFormat;
   causeAreaTags: string[];
   isSeed: boolean;
+  isUniversal: boolean;          // sector-wide event, relevant to any org past strict matching (ADR-0007)
   speakers: EventSpeaker[];
   sponsors: EventSponsor[];
   organizerContacts: EventOrganizerContact[];
@@ -155,8 +163,19 @@ export interface EventMatch {
   donorSignalCallout?: string;
   evidence: SourcedClaim[];      // min length 1 - enforce in API route
   status: EventMatchStatus;
+  matchTier: MatchTier;          // which cascade tier surfaced this match (ADR-0004)
   dismissedReason?: string;      // v2 feedback loop; collected now
   createdAt: string;
+}
+
+export interface MatchRun {
+  id: string;
+  profileId: string;
+  status: MatchRunStatus;
+  notices: string[];             // honest degradation messages, surfaced in-UI
+  error?: string;                // set only when status = "failed"
+  startedAt: string;
+  finishedAt?: string;
 }
 
 export interface PlanChecklistItem {

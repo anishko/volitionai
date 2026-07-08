@@ -15,7 +15,7 @@ import { looseJsonParse, todayStr } from "@/lib/pipeline/schema";
 import { CAUSE_AREAS } from "@/lib/nonprofit/onboarding-schema";
 import type { EventSearchCandidate } from "./search";
 
-export const MAX_FIRECRAWL_PAGES_PER_RUN = 15;
+export const MAX_SCRAPE_PAGES_PER_RUN = 15;
 const MARKDOWN_CHAR_LIMIT = 8_000;
 
 const isoDate = z
@@ -67,7 +67,7 @@ export interface ScrapeOutcome {
   pagesScraped: number;
   pagesFailed: number;
   skippedReason?: string; // set when the whole stage was skipped (no API key)
-  /** True when the Firecrawl page ceiling truncated the candidate list —
+  /** True when the deep-scrape page ceiling truncated the candidate list —
    *  partial results by design (PRD budget rule), surfaced as a run notice. */
   stoppedAtBudget: boolean;
 }
@@ -184,10 +184,10 @@ export async function scrapeEventCandidates(
     };
   }
 
-  // Hard budget cap (PRD: max 15 Firecrawl pages per match run). stoppedAtBudget
+  // Hard budget cap (PRD: max 15 deep-scrape pages per match run). stoppedAtBudget
   // reports only when the ceiling itself binds — not the smaller per-run default.
-  const cap = Math.min(maxPages, MAX_FIRECRAWL_PAGES_PER_RUN);
-  const stoppedAtBudget = candidates.length > MAX_FIRECRAWL_PAGES_PER_RUN;
+  const cap = Math.min(maxPages, MAX_SCRAPE_PAGES_PER_RUN);
+  const stoppedAtBudget = candidates.length > MAX_SCRAPE_PAGES_PER_RUN;
   const toScrape = candidates.slice(0, cap);
   const events: ScrapedEvent[] = [];
   let pagesScraped = 0;
@@ -197,7 +197,7 @@ export async function scrapeEventCandidates(
   // one slow page must not starve the rest of the run.
   for (const candidate of toScrape) {
     // In-loop hard stop: never exceed the page ceiling even if cap logic changes.
-    if (pagesScraped >= MAX_FIRECRAWL_PAGES_PER_RUN) break;
+    if (pagesScraped >= MAX_SCRAPE_PAGES_PER_RUN) break;
     const started = Date.now();
     try {
       const page = await provider.fetch(candidate.url);

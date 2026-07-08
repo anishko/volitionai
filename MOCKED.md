@@ -33,7 +33,10 @@
   $0). Unconfigured keys degrade cleanly: `EVENTBRITE_API_KEY`,
   `MEETUP_ACCESS_TOKEN`.
 - The legacy ideas pipeline (`lib/pipeline/run.ts`) still calls Eventbrite
-  directly; the events pipeline will route through the adapter in PR6.
+  directly. The events pipeline now routes through the adapters: a match run
+  (`lib/events/run.ts`) fetches candidates via `fetchSourceCandidates`
+  (`lib/events/sources/router.ts`) across all structured + crawler adapters,
+  so this is wired, not pending.
 
 ## Community-event adapters (real, but conditional — honest degradation)
 - Meetup (`lib/data/meetup.ts`, official free API, metered at $0) and Luma
@@ -48,18 +51,31 @@
 - Both feed the same `events` corpus under the same field-level citation rule
   (each event's public URL is its `source_url`) and dedupe on the same key.
 
-## Schema-ahead-of-UI / built-ahead-of-wiring (not mocked, just unbuilt/unwired)
-- **Planning tables** (`event_plans` + its budget/cost columns, migrations
-  `20260707000600` / `20260707000700`) and `events.certificates_offered` ship
-  in the schema but have **no API, page, or UI yet** on this branch (Phase 5/6
-  live on separate branches: `anish/outreach-p5`, `anish/plans-p6`). Nothing is
-  surfaced, so there is nothing to label — no product claim until they ship.
-- **Post-event debrief** (`event_debriefs` table, migration `20260707000700_*`):
-  schema landed for v1.5, **no UI and no read/write path** in the app. No claim.
+## Shipped since the last refresh (was schema-ahead-of-UI, now live)
+These were listed here as schema-only; they now have live API + UI on `main`
+and are **no longer mocked or unwired**. Kept as an explicit correction so the
+list stays honest in both directions.
+- **Post-event debrief** (`event_debriefs` table + `20260708060422_debrief_actuals`)
+  is **live** (PR #24): `app/api/debriefs/route.ts` + `[id]`, the debrief form
+  and planned-vs-actual view at `app/debriefs/[matchId]/page.tsx`, and an entry
+  link from event detail. Real read/write path — the prior "no UI, no claim"
+  note is stale and removed.
+- **Planning tables** (`event_plans`, migrations `20260707000600` /
+  `20260707000700`, `events.certificates_offered`) are **live**: `app/api/plans`
+  (`route.ts`, `[id]`), the plan pages `app/plan/page.tsx` /
+  `app/plan/annual/page.tsx`, and `lib/plans/*`. **Annual export** ships at
+  `app/api/plans/annual/export/route.ts`. No longer on a separate branch.
+- **Outreach** is **live**: `app/api/outreach/route.ts`, the drafter at
+  `app/outreach/[matchId]/page.tsx` + `components/outreach-drafter.tsx`, backed
+  by `lib/outreach/draft.ts` / `store.ts`. The "Phase 5 on `anish/outreach-p5`"
+  note is stale and removed.
+
+## Still schema-ahead-of-UI / unbuilt (genuinely no product claim)
 - **`qualitative_signals`** (migration `20260707000800_*`): captured NOW by
-  conversational onboarding and stored on the profile
-  (`app/api/nonprofit/profile/route.ts`), but **not yet consumed** — match
-  explanations don't read it. Schema-now / used-later; no claim.
+  conversational onboarding (`lib/nonprofit/onboarding-schema.ts`) and stored on
+  the profile, but **still not consumed** — no matcher/explain code reads it
+  (verified: only the onboarding schema references it). Schema-now / used-later;
+  no claim.
 - **Roadmap items not built:** v1.5 Advocacy action drafts (4th outreach type)
   and v2 Donor Q&A Agent. No UI, no routes, no product claims until built.
 
@@ -67,6 +83,29 @@
 - Onboarding/nonprofit surface needs the Supabase migrations applied to function
   (the DB is empty without them). `/api/health` reports readiness
   (`supabase`, `ollama`, `anthropicKey`, `tavilyKey`, `firecrawlKey` — booleans).
+
+## Current live-lane gaps (dark or degraded right now — say so out loud)
+Honesty discipline works both ways: these are real capabilities the
+architecture supports but that are **not exercised in the current deployment**.
+Each degrades cleanly (notice + metered $0, run continues), but do not claim
+them as working in a demo unless the env is configured.
+- **Firecrawl unconfigured → deep-scrape dark.** Without `FIRECRAWL_API_KEY`,
+  the uniform scrape stage (`lib/events/scrape.ts`, called from
+  `lib/events/run.ts`) contributes nothing and the run surfaces a skip notice;
+  Luma discovery (which scrapes via Firecrawl) is also dark. The feed still
+  fills from the seed corpus + structured adapters + the relaxation cascade. A
+  **Tavily-extract fallback** for the deep-scrape path is in progress on
+  `anish/tavily-extract` (parallel work — do not edit `lib/events/scrape.ts`,
+  `lib/data/`, or `lib/ai/cost.ts` here).
+- **Meetup token absent → structured Meetup adapter dark.** Without
+  `MEETUP_ACCESS_TOKEN` the Meetup adapter no-ops with a notice (metered $0);
+  no Meetup candidates enter the corpus until it is set.
+- **Ollama absent in prod → 0% local routing.** The "roughly half of tokens run
+  locally at $0" pillar depends on a reachable Ollama (`/api/health` reports
+  `ollama: false` in prod today). When it is unreachable, routing falls back to
+  cloud **by design** (no hard failure) — but the cost receipt's
+  `localTokenShare` reads **0%** and the run is fully cloud-metered. The split
+  is real only where Ollama is actually running (local dev / a provisioned box).
 
 ## What runs live (not mocked)
 Profile extraction, query planning, Tavily/Firecrawl search + scrape, ProPublica

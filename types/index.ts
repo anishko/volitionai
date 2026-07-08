@@ -8,9 +8,14 @@ export interface BusinessProfile {
   goals: string[];             // e.g. ["find sponsors", "more foot traffic"]
   voice?: string;              // tone extracted from uploaded past content
   pastContentThemes?: string[];
+  // Nonprofit/advocacy extras — populated when the org is mission-driven
+  issueAreas?: string[];       // ["child welfare", "eminent domain", "homeless rights"]
+  movementAlignment?: string;  // "libertarian", "progressive", "conservative", etc.
+  geographicReach?: string[];  // cities/states where they operate beyond home base
+  nonprofitType?: string;      // "legal advocacy", "direct services", "policy", etc.
 }
 
-export type IdeaLane = "trend" | "comparable" | "opportunity" | "law";
+export type IdeaLane = "trend" | "comparable" | "opportunity" | "law" | "event" | "donor";
 
 export interface Evidence {
   claim: string;               // the specific fact this idea rests on
@@ -179,4 +184,13 @@ export interface IdeaCard {
   confidence: "high" | "medium" | "low";
   draftContent?: string;       // filled by "draft it" in org voice
   isSample?: boolean;          // true = mocked; UI must show a label
+  // Event-lane extras — only populated when lane === "event"
+  eventDates?: string;         // "annual, usually March" — never a specific past date
+  eventLocation?: string;
+  knownPastSponsors?: string[]; // only if citable from evidence
+  organizerContact?: string;   // only if citable from evidence
+  sponsorCost?: string;        // only if citable from evidence
+  // Donor-lane extras — only populated when lane === "donor"
+  donorType?: "individual" | "foundation" | "pac" | "corporate";
+  approachAngle?: string;      // how to make first contact, grounded in evidence
 }

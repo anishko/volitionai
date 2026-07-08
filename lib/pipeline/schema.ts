@@ -5,7 +5,7 @@
 import { z } from "zod";
 import type { IdeaLane } from "@/types";
 
-export const LANES = ["trend", "comparable", "opportunity", "law"] as const;
+export const LANES = ["trend", "comparable", "opportunity", "law", "event", "donor"] as const;
 
 export const ProfileSchema = z.object({
   businessName: z.string().min(1),
@@ -17,6 +17,10 @@ export const ProfileSchema = z.object({
   goals: z.array(z.string()).default([]),
   voice: z.string().optional(),
   pastContentThemes: z.array(z.string()).optional(),
+  issueAreas: z.array(z.string()).optional(),
+  movementAlignment: z.string().optional(),
+  geographicReach: z.array(z.string()).optional(),
+  nonprofitType: z.string().optional(),
 });
 
 export const PlanSchema = z.object({
@@ -47,6 +51,15 @@ export const IdeaCardCoreSchema = z.object({
   comparables: z.array(ComparableSchema).default([]),
   executionSteps: z.array(z.string()).min(1),
   confidence: z.enum(["high", "medium", "low"]),
+  // Event-lane extras — model populates only when lane === "event"
+  eventDates: z.string().optional(),
+  eventLocation: z.string().optional(),
+  knownPastSponsors: z.array(z.string()).optional(),
+  organizerContact: z.string().optional(),
+  sponsorCost: z.string().optional(),
+  // Donor-lane extras — model populates only when lane === "donor"
+  donorType: z.enum(["individual", "foundation", "pac", "corporate"]).optional(),
+  approachAngle: z.string().optional(),
 });
 export type IdeaCardCore = z.infer<typeof IdeaCardCoreSchema>;
 
@@ -109,6 +122,15 @@ export const SYNTHESIS_JSON_SCHEMA: Record<string, unknown> = {
           },
           executionSteps: { type: "array", items: { type: "string" } },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
+          // Event-lane extras (optional — populate only when lane === "event")
+          eventDates: { type: "string" },
+          eventLocation: { type: "string" },
+          knownPastSponsors: { type: "array", items: { type: "string" } },
+          organizerContact: { type: "string" },
+          sponsorCost: { type: "string" },
+          // Donor-lane extras (optional — populate only when lane === "donor")
+          donorType: { type: "string", enum: ["individual", "foundation", "pac", "corporate"] },
+          approachAngle: { type: "string" },
         },
       },
     },

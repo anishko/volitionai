@@ -99,6 +99,17 @@ export class CostMeter {
     });
   }
 
+  /** Eventbrite Events API — free tier, still metered for the audit trail. */
+  eventbrite(args: { stage: PipelineStage; calls: number; latencyMs: number }): CostEvent {
+    return this.push({
+      stage: args.stage,
+      provider: "eventbrite",
+      unitCount: args.calls,
+      usd: 0,
+      latencyMs: args.latencyMs,
+    });
+  }
+
   /** Roll all recorded events into the receipt the UI renders. */
   receipt(): CostReceipt {
     const totalUsd = this.events.reduce((s, e) => s + e.usd, 0);

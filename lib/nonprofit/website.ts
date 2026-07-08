@@ -1,8 +1,7 @@
-// Website enrichment: scrape homepage + /about, summarize locally ($0 Ollama).
+// Website enrichment: scrape homepage + /about, summarize via Anthropic.
 // Runs synchronously during onboarding when a website URL is provided; the
 // summary feeds extractNonprofitProfile and is persisted in internal_facts.
 import { firecrawlScrape, firecrawlConfigured } from "@/lib/data/firecrawl";
-import { ollamaChat } from "@/lib/ai/ollama";
 import { anthropicMessage } from "@/lib/ai/anthropic";
 import { CostMeter } from "@/lib/ai/cost";
 import { looseJsonParse } from "@/lib/pipeline/schema";
@@ -61,24 +60,6 @@ export async function scrapeWebsiteSummary(
     "Return the JSON now.",
   ].join("\n");
 
-  // Local first ($0)
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const r = await ollamaChat({ system: SYSTEM, prompt, json: true, timeoutMs: 30_000 });
-      meter.ollama({
-        stage: "website_enrichment",
-        model: r.model,
-        inputTokens: r.inputTokens,
-        outputTokens: r.outputTokens,
-        latencyMs: r.latencyMs,
-      });
-      return WebsiteSummarySchema.parse(looseJsonParse(r.text)).websiteSummary;
-    } catch {
-      if (attempt === 0) continue;
-    }
-  }
-
-  // Cloud fallback
   try {
     const r = await anthropicMessage({ system: SYSTEM, prompt, maxTokens: 512 });
     meter.anthropic({

@@ -1,9 +1,7 @@
-// STAGE 1: event query planning. Runs LOCAL ($0) with the standard metered
-// cloud fallback. Turns the nonprofit profile into targeted Tavily queries for
-// long-tail events the seed database misses — niche issue-area conferences are
-// exactly what a static directory cannot list.
+// STAGE 1: event query planning. Turns the nonprofit profile into targeted
+// Tavily queries for long-tail events the seed database misses — niche
+// issue-area conferences are exactly what a static directory cannot list.
 import { z } from "zod";
-import { ollamaChat, OLLAMA_MODEL } from "@/lib/ai/ollama";
 import { anthropicMessage } from "@/lib/ai/anthropic";
 import { CostMeter } from "@/lib/ai/cost";
 import { looseJsonParse, todayStr } from "@/lib/pipeline/schema";
@@ -53,27 +51,6 @@ export async function planEventQueries(
   profile: NonprofitProfile,
 ): Promise<EventQueryPlan> {
   const prompt = buildPrompt(profile);
-
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const r = await ollamaChat({ system: SYSTEM, prompt, json: true });
-      meter.ollama({
-        stage: "plan",
-        model: r.model,
-        inputTokens: r.inputTokens,
-        outputTokens: r.outputTokens,
-        latencyMs: r.latencyMs,
-      });
-      return EventQueryPlanSchema.parse(looseJsonParse(r.text));
-    } catch (err) {
-      if (attempt === 1) {
-        console.warn(
-          `[events/plan] Ollama (${OLLAMA_MODEL}) failed, falling back to cloud:`,
-          err instanceof Error ? err.message : err,
-        );
-      }
-    }
-  }
 
   const r = await anthropicMessage({ system: SYSTEM, prompt, maxTokens: 800 });
   meter.anthropic({

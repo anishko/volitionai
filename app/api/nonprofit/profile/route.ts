@@ -279,14 +279,10 @@ export async function PATCH(req: NextRequest) {
     }
     const form = parsed2.data;
 
-    const meter = new CostMeter(newRunId());
-
-    const extracted = await extractNonprofitProfile(meter, form, undefined);
-
     // Build update object from only the fields present in the partial patch.
     // We use `patch` (not the merged `form`) to avoid overwriting stored fields
     // that were absent from the request body.
-    const baseUpdate: Record<string, unknown> = { extracted_profile: extracted };
+    const baseUpdate: Record<string, unknown> = {};
     if (patch.orgName !== undefined) baseUpdate.org_name = form.orgName;
     if (patch.website !== undefined) baseUpdate.website = form.website ?? null;
     if (patch.causeAreas !== undefined) baseUpdate.cause_areas = form.causeAreas;
@@ -333,13 +329,29 @@ export async function PATCH(req: NextRequest) {
     if (updateError) throw updateError;
 
     const profile = rowToNonprofitProfile(row as NonprofitProfileRow);
-    const { persisted } = await persistCostEvents({
-      events: meter.events,
-      runType: "profile_extraction",
-      entityId: profile.id,
+
+    // Re-extract in the background so the save is instant.
+    const profileId = profile.id;
+    after(async () => {
+      const admin = createSupabaseAdminClient();
+      const meter = new CostMeter(newRunId());
+      try {
+        const extracted = await extractNonprofitProfile(meter, form, undefined);
+        await admin
+          .from("nonprofit_profiles")
+          .update({ extracted_profile: extracted })
+          .eq("id", profileId);
+        await persistCostEvents({
+          events: meter.events,
+          runType: "profile_extraction",
+          entityId: profileId,
+        });
+      } catch (err) {
+        console.error("[/api/nonprofit/profile PATCH] background extraction failed:", err);
+      }
     });
 
-    return NextResponse.json({ profile, receipt: meter.receipt(), costsPersisted: persisted });
+    return NextResponse.json({ profile });
   } catch (err) {
     console.error("[/api/nonprofit/profile PATCH]", err);
     return NextResponse.json(

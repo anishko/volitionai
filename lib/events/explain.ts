@@ -1,11 +1,9 @@
-// STAGE 6: match explanation. The one CLOUD stage (claude-haiku-4-5 via the
-// router) — profile-aware "why attend" copy plus a donor-signal callout for
-// the finalists only; the rules filter has already spent the cheap signals.
+// STAGE 6: match explanation. Profile-aware "why attend" copy plus a donor-signal
+// callout for the finalists only; the rules filter has already spent the cheap signals.
 // Citations are validated mechanically afterward: every evidence URL must
 // come from the event's own sourced data, or the claim is dropped.
 import { z } from "zod";
 import { anthropicMessage } from "@/lib/ai/anthropic";
-import { ollamaChat } from "@/lib/ai/ollama";
 import { CostMeter } from "@/lib/ai/cost";
 import { looseJsonParse, todayStr } from "@/lib/pipeline/schema";
 import { validateEvidence } from "./validate";
@@ -154,40 +152,21 @@ export async function explainMatches(
 ): Promise<ExplainOutcome> {
   const prompt = buildPrompt(profile, finalists);
 
-  let parsed: z.infer<typeof ExplanationSchema> | null = null;
-  let model = "";
-  try {
-    const r = await anthropicMessage({
-      system: SYSTEM,
-      prompt,
-      jsonSchema: EXPLANATION_JSON_SCHEMA,
-      maxTokens: 6000,
-    });
-    meter.anthropic({
-      stage: "event_match",
-      model: r.model,
-      inputTokens: r.inputTokens,
-      outputTokens: r.outputTokens,
-      latencyMs: r.latencyMs,
-    });
-    parsed = ExplanationSchema.parse(looseJsonParse(r.text));
-    model = r.model;
-  } catch (err) {
-    console.warn(
-      "[events/explain] cloud explanation failed, falling back to local:",
-      err instanceof Error ? err.message : err,
-    );
-    const r = await ollamaChat({ system: SYSTEM, prompt, json: true, timeoutMs: 90_000 });
-    meter.ollama({
-      stage: "event_match",
-      model: r.model,
-      inputTokens: r.inputTokens,
-      outputTokens: r.outputTokens,
-      latencyMs: r.latencyMs,
-    });
-    parsed = ExplanationSchema.parse(looseJsonParse(r.text));
-    model = r.model;
-  }
+  const r = await anthropicMessage({
+    system: SYSTEM,
+    prompt,
+    jsonSchema: EXPLANATION_JSON_SCHEMA,
+    maxTokens: 6000,
+  });
+  meter.anthropic({
+    stage: "event_match",
+    model: r.model,
+    inputTokens: r.inputTokens,
+    outputTokens: r.outputTokens,
+    latencyMs: r.latencyMs,
+  });
+  const parsed: z.infer<typeof ExplanationSchema> = ExplanationSchema.parse(looseJsonParse(r.text));
+  const model = r.model;
 
   const byIndex = new Map(parsed.explanations.map((e) => [e.index, e]));
   let evidenceDroppedForBadUrl = 0;

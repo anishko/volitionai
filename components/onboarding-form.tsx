@@ -159,7 +159,7 @@ export function OnboardingForm({ mode = "create", initialValues, onSuccess }: Pr
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error ?? "Failed to update profile");
-        onSuccess?.();
+        router.push("/events");
       } else {
         const res = await fetch("/api/nonprofit/profile", {
           method: "POST",

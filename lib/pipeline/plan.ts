@@ -1,6 +1,5 @@
-// STAGE: query planning. Runs LOCAL ($0). Turns the profile + goals into a
-// small set of concrete web-search queries and picks which idea lanes to pursue.
-import { ollamaChat } from "@/lib/ai/ollama";
+// STAGE: query planning. Turns the profile + goals into a small set of
+// concrete web-search queries and picks which idea lanes to pursue.
 import { anthropicMessage } from "@/lib/ai/anthropic";
 import { CostMeter } from "@/lib/ai/cost";
 import { PlanSchema, looseJsonParse, todayStr, type Plan } from "./schema";
@@ -50,27 +49,6 @@ export async function planQueries(
   profile: BusinessProfile,
 ): Promise<Plan> {
   const prompt = buildPrompt(profile);
-
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const r = await ollamaChat({ system: SYSTEM, prompt, json: true });
-      meter.ollama({
-        stage: "plan",
-        model: r.model,
-        inputTokens: r.inputTokens,
-        outputTokens: r.outputTokens,
-        latencyMs: r.latencyMs,
-      });
-      return PlanSchema.parse(looseJsonParse(r.text));
-    } catch (err) {
-      if (attempt === 1) {
-        console.warn(
-          "[plan] Ollama planning failed, falling back to cloud:",
-          err instanceof Error ? err.message : err,
-        );
-      }
-    }
-  }
 
   const r = await anthropicMessage({ system: SYSTEM, prompt, maxTokens: 800 });
   meter.anthropic({

@@ -1,6 +1,5 @@
-// STAGE: "draft it". Runs LOCAL (Ollama, $0) — voice mimicry is a local-model
-// strength and this keeps the drafting beat instant and free.
-import { ollamaChat } from "@/lib/ai/ollama";
+// STAGE: "draft it". Runs on Anthropic cloud (Haiku 4.5 default).
+import { anthropicMessage } from "@/lib/ai/anthropic";
 import type { BusinessProfile, IdeaCard } from "@/types";
 
 const SYSTEM = `You are a copywriter drafting short outreach/marketing content in an organization's own voice.
@@ -20,6 +19,6 @@ CONTEXT (why it fits): ${card.whyItFitsYou}
 
 Draft the content now.`;
 
-  const r = await ollamaChat({ system: SYSTEM, prompt, temperature: 0.6 });
+  const r = await anthropicMessage({ system: SYSTEM, prompt, maxTokens: 700 });
   return r.text;
 }

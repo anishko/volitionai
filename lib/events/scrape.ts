@@ -1,14 +1,13 @@
 // STAGE 3: event page scraping. A scrape provider fetches each candidate page
-// as markdown; a LOCAL model ($0, metered cloud fallback) extracts structured
-// event data. Source URLs are stamped mechanically from the scraped page —
-// the model never invents citations. Hard page cap per PRD budget rules.
+// as markdown; Anthropic extracts structured event data. Source URLs are
+// stamped mechanically from the scraped page — the model never invents citations.
+// Hard page cap per PRD budget rules.
 // Provider: Firecrawl preferred-if-configured; Tavily /extract as the fallback
 // (same key the search lane already runs on) so the live lane is never dark;
 // existing skip notice only when neither is configured.
 import { z } from "zod";
 import { firecrawlConfigured, firecrawlScrape } from "@/lib/data/firecrawl";
 import { tavilyExtractConfigured, tavilyExtractScrape } from "@/lib/data/tavily-extract";
-import { ollamaChat } from "@/lib/ai/ollama";
 import { anthropicMessage } from "@/lib/ai/anthropic";
 import { CostMeter } from "@/lib/ai/cost";
 import { looseJsonParse, todayStr } from "@/lib/pipeline/schema";
@@ -107,27 +106,6 @@ async function extractEvent(
 ): Promise<ScrapedEventData> {
   const prompt = buildPrompt(candidate, markdown);
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const r = await ollamaChat({ system: SYSTEM, prompt, json: true, timeoutMs: 60_000 });
-      meter.ollama({
-        stage: "event_scrape",
-        model: r.model,
-        inputTokens: r.inputTokens,
-        outputTokens: r.outputTokens,
-        latencyMs: r.latencyMs,
-      });
-      return ScrapedEventSchema.parse(looseJsonParse(r.text));
-    } catch (err) {
-      if (attempt === 1) {
-        console.warn(
-          `[events/scrape] local extraction failed for ${candidate.url}, falling back to cloud:`,
-          err instanceof Error ? err.message : err,
-        );
-      }
-    }
-  }
-
   const r = await anthropicMessage({ system: SYSTEM, prompt, maxTokens: 2000 });
   meter.anthropic({
     stage: "event_scrape",
@@ -193,8 +171,7 @@ export async function scrapeEventCandidates(
   let pagesScraped = 0;
   let pagesFailed = 0;
 
-  // Sequential on purpose: local extraction serializes on Ollama anyway, and
-  // one slow page must not starve the rest of the run.
+  // Sequential: one slow page must not starve the rest of the run.
   for (const candidate of toScrape) {
     // In-loop hard stop: never exceed the page ceiling even if cap logic changes.
     if (pagesScraped >= MAX_SCRAPE_PAGES_PER_RUN) break;

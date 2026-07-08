@@ -1,7 +1,4 @@
-// STAGE: profile extraction. Runs LOCAL (Ollama, $0) — the "extracted on this
-// laptop, docs never left it" pitch beat. Falls back to cloud only if Ollama is
-// unreachable, and the meter makes that fallback visible as a cost delta.
-import { ollamaChat, OLLAMA_MODEL } from "@/lib/ai/ollama";
+// STAGE: profile extraction. Runs on Anthropic cloud (Haiku 4.5 default).
 import { anthropicMessage } from "@/lib/ai/anthropic";
 import { CostMeter } from "@/lib/ai/cost";
 import { ProfileSchema } from "./schema";
@@ -41,34 +38,7 @@ export async function extractProfile(
 ): Promise<BusinessProfile> {
   const prompt = buildPrompt(description, pastContent);
 
-  // Try local first, with one retry on parse failure.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const r = await ollamaChat({ system: SYSTEM, prompt, json: true });
-      meter.ollama({
-        stage: "extract_profile",
-        model: r.model,
-        inputTokens: r.inputTokens,
-        outputTokens: r.outputTokens,
-        latencyMs: r.latencyMs,
-      });
-      return ProfileSchema.parse(looseJsonParse(r.text));
-    } catch (err) {
-      if (attempt === 1) {
-        console.warn(
-          `[profile] Ollama (${OLLAMA_MODEL}) extraction failed, falling back to cloud:`,
-          err instanceof Error ? err.message : err,
-        );
-      }
-    }
-  }
-
-  // Cloud fallback — costs money; the meter shows exactly how much.
-  const r = await anthropicMessage({
-    system: SYSTEM,
-    prompt,
-    maxTokens: 1024,
-  });
+  const r = await anthropicMessage({ system: SYSTEM, prompt, maxTokens: 1024 });
   meter.anthropic({
     stage: "extract_profile",
     model: r.model,

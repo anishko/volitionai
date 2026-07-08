@@ -1,9 +1,6 @@
-// Phase 5 outreach drafting — LOCAL (Ollama qwen3:8b, think:false, $0). The AI
-// PREPARES a send in the org's own voice; a human pulls the trigger. Nothing is
-// ever sent. Date-grounded, grounded in the match's cited claims (never invents
-// facts). Falls back to cloud only if Ollama is unreachable — logged as
-// fallback:cloud, never silent. Every call is metered.
-import { ollamaChat } from "@/lib/ai/ollama";
+// Phase 5 outreach drafting. The AI PREPARES a send in the org's own voice;
+// a human pulls the trigger. Nothing is ever sent. Date-grounded, grounded in
+// the match's cited claims (never invents facts). Every call is metered.
 import { anthropicMessage } from "@/lib/ai/anthropic";
 import { CostMeter } from "@/lib/ai/cost";
 import type {
@@ -89,23 +86,6 @@ export async function draftOutreach(
 ): Promise<DraftResult> {
   const prompt = buildPrompt(args);
 
-  // LOCAL first ($0). qwen3 ships with think ON; ollama.ts forces think:false.
-  try {
-    const r = await ollamaChat({ system: BASE_SYSTEM, prompt, temperature: 0.6 });
-    if (!r.text.trim()) throw new Error("empty local draft");
-    meter.ollama({
-      stage: "draft",
-      model: r.model,
-      inputTokens: r.inputTokens,
-      outputTokens: r.outputTokens,
-      latencyMs: r.latencyMs,
-    });
-    return { body: r.text.trim(), evidence: args.match.evidence, modelRoute: "local" };
-  } catch (err) {
-    console.warn("[outreach] local draft failed, falling back to cloud:", err instanceof Error ? err.message : err);
-  }
-
-  // Fallback: cloud (never silent — logged as fallback:cloud on the receipt).
   const r = await anthropicMessage({ system: BASE_SYSTEM, prompt, maxTokens: 700 });
   meter.anthropic({
     stage: "draft",
@@ -114,5 +94,5 @@ export async function draftOutreach(
     outputTokens: r.outputTokens,
     latencyMs: r.latencyMs,
   });
-  return { body: r.text.trim(), evidence: args.match.evidence, modelRoute: "fallback:cloud" };
+  return { body: r.text.trim(), evidence: args.match.evidence, modelRoute: "cloud" };
 }

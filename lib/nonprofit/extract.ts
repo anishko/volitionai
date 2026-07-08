@@ -1,9 +1,6 @@
-// STAGE: nonprofit profile extraction. Runs LOCAL (Ollama, $0) with the same
-// cloud-fallback-with-visible-cost pattern as lib/pipeline/profile.ts. Turns
-// the structured onboarding form + freetext notes into the extracted_profile
-// jsonb the matching pipeline plans queries from.
+// STAGE: nonprofit profile extraction. Turns the structured onboarding form +
+// freetext notes into the extracted_profile jsonb the matching pipeline plans from.
 import { z } from "zod";
-import { ollamaChat, OLLAMA_MODEL } from "@/lib/ai/ollama";
 import { anthropicMessage } from "@/lib/ai/anthropic";
 import { CostMeter } from "@/lib/ai/cost";
 import { looseJsonParse } from "@/lib/pipeline/schema";
@@ -70,29 +67,6 @@ export async function extractNonprofitProfile(
 ): Promise<ExtractedNonprofitProfile> {
   const prompt = buildPrompt(form, websiteContext);
 
-  // Local first, one retry on parse failure.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const r = await ollamaChat({ system: SYSTEM, prompt, json: true });
-      meter.ollama({
-        stage: "extract_profile",
-        model: r.model,
-        inputTokens: r.inputTokens,
-        outputTokens: r.outputTokens,
-        latencyMs: r.latencyMs,
-      });
-      return ExtractedNonprofitProfileSchema.parse(looseJsonParse(r.text));
-    } catch (err) {
-      if (attempt === 1) {
-        console.warn(
-          `[nonprofit/extract] Ollama (${OLLAMA_MODEL}) failed, falling back to cloud:`,
-          err instanceof Error ? err.message : err,
-        );
-      }
-    }
-  }
-
-  // Cloud fallback — costs money; the meter makes that visible on the receipt.
   const r = await anthropicMessage({ system: SYSTEM, prompt, maxTokens: 1024 });
   meter.anthropic({
     stage: "extract_profile",

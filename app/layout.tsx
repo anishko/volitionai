@@ -1,21 +1,28 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-// The Evidence Dossier type system:
-//  · Fraunces  — warm literary serif, the human/mission voice (display)
-//  · Plex Sans — humanist grotesque, credible workhorse (body)
+// Site-wide type system:
+//  · Gambarino (regular) — display serif, all headings
+//  · Switzer — body sans; light (300) is the default weight for small text,
+//    with heavier cuts available for buttons/labels
 //  · Plex Mono — the machine-evidence voice: citations, costs, the ledger
-const fraunces = Fraunces({
+// Gambarino & Switzer are Fontshare faces, self-hosted from app/fonts.
+const gambarino = localFont({
+  src: "./fonts/Gambarino-Regular.woff2",
+  weight: "400",
   variable: "--font-display",
-  subsets: ["latin"],
-  axes: ["opsz", "SOFT"],
 });
 
-const plexSans = IBM_Plex_Sans({
+const switzer = localFont({
+  src: [
+    { path: "./fonts/Switzer-Light.woff2", weight: "300", style: "normal" },
+    { path: "./fonts/Switzer-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/Switzer-Medium.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/Switzer-Semibold.woff2", weight: "600", style: "normal" },
+  ],
   variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
 });
 
 const plexMono = IBM_Plex_Mono({
@@ -39,7 +46,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${gambarino.variable} ${switzer.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

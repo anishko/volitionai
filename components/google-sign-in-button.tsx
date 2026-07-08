@@ -33,7 +33,7 @@ export function GoogleSignInButton() {
       <Button
         onClick={signIn}
         disabled={loading}
-        className="h-11 w-full gap-2.5 text-base"
+        className="h-11 w-full gap-2.5 rounded-[10px] text-base font-medium"
       >
         {!loading && <GoogleMark />}
         {loading ? "Redirecting to Google…" : "Continue with Google"}
@@ -45,7 +45,7 @@ export function GoogleSignInButton() {
 
 function GoogleMark() {
   return (
-    <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
+    <svg viewBox="0 0 48 48" className="size-5" aria-hidden="true">
       <path
         fill="#FFC107"
         d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"

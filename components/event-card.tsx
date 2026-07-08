@@ -50,7 +50,7 @@ export function EventCard({ match, event }: { match: EventMatch; event: Event })
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h3 className="truncate font-display text-lg font-semibold text-foreground group-hover:text-brand">
+          <h3 className="truncate font-display text-xl text-foreground group-hover:text-brand">
             {event.name}
           </h3>
           <p className="mt-1 font-mono text-xs text-muted-foreground">

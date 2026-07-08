@@ -296,7 +296,7 @@ export function EventDetail({ event }: { event: Event }) {
           >
             ← Back to events
           </Link>
-          <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight text-foreground">
+          <h1 className="mt-3 font-display text-4xl tracking-tight text-foreground">
             {event.name}
           </h1>
           {event.causeAreaTags.length > 0 && (

@@ -143,7 +143,17 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "cv05" 1, "ss01" 1;
+    /* Switzer Light is the site's default text weight; heavier cuts are
+       opted into per-element (font-medium / font-semibold). */
+    font-weight: 300;
+  }
+  /* Headings default to the display face (Gambarino, regular only — never
+     synthesize bold on it). */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display font-normal;
   }
   html {
     @apply font-sans;

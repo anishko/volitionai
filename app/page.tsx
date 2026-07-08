@@ -1,11 +1,8 @@
-// Landing page — Attio-style: white ground, Inter set tight, one giant
-// centered claim, and a tabbed live-HTML product preview instead of a
-// screenshot. Palette mirrors the login page's olive/greige theme, inlined
-// and scoped to this page.
-import { Inter } from "next/font/google";
+// Landing page — Attio-style: one giant centered claim and a tabbed
+// live-HTML product preview instead of a screenshot. Palette mirrors the
+// login page's olive/greige theme, inlined and scoped to this page. Type
+// comes from the global scheme (Gambarino headings / Switzer Light body).
 import { LandingPage } from "@/components/landing-page";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: "Volition — the insights team engineered for your mission",
@@ -14,5 +11,5 @@ export const metadata = {
 };
 
 export default function Home() {
-  return <LandingPage fontClassName={inter.className} />;
+  return <LandingPage />;
 }

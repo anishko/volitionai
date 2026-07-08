@@ -7,7 +7,7 @@ export function ProfileCard({ profile }: { profile: BusinessProfile }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-xl text-zinc-900 dark:text-zinc-50">
           {profile.businessName}
         </h2>
         <span className="text-xs text-zinc-400">extracted locally · $0</span>

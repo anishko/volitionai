@@ -30,7 +30,7 @@ export default async function OnboardingFormPage() {
           <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
             Volition
           </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="mt-1 text-3xl tracking-tight text-zinc-900 dark:text-zinc-50">
             Tell us about your org.
           </h1>
           <p className="mx-auto mt-2 max-w-lg text-sm text-zinc-500 dark:text-zinc-400">

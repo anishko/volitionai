@@ -161,7 +161,7 @@ function EventsPanel() {
   return (
     <div className="flex-1 p-4 sm:p-5">
       <div className="flex items-baseline justify-between">
-        <h3 className="text-sm font-semibold" style={{ color: INK }}>
+        <h3 className="font-sans text-sm font-semibold" style={{ color: INK }}>
           Matched events
         </h3>
         <span className="font-mono text-[10px]" style={{ color: MUTED }}>
@@ -479,7 +479,7 @@ function Hero() {
         </span>
       </Link>
       <h1
-        className="rise mx-auto mt-8 max-w-4xl text-5xl font-semibold leading-[1.04] tracking-[-0.035em] sm:text-7xl"
+        className="rise mx-auto mt-8 max-w-4xl text-5xl leading-[1.06] tracking-[-0.015em] sm:text-7xl"
         style={{ color: INK, animationDelay: "60ms" }}
       >
         The insights team engineered for your mission.
@@ -577,7 +577,7 @@ function Pillars() {
           Why Volition
         </p>
         <h2
-          className="mt-3 max-w-2xl text-3xl font-semibold tracking-[-0.02em] sm:text-4xl"
+          className="mt-3 max-w-2xl text-3xl tracking-[-0.01em] sm:text-4xl"
           style={{ color: INK }}
         >
           A chatbot gives you plausible. Volition gives you sourced.
@@ -596,7 +596,7 @@ function Pillars() {
                 {p.title}
               </span>
               <h3
-                className="mt-3 text-lg font-semibold tracking-tight"
+                className="mt-3 text-xl tracking-tight"
                 style={{ color: INK }}
               >
                 {p.heading}
@@ -644,7 +644,7 @@ function HowItWorks() {
           How it works
         </p>
         <h2
-          className="mt-3 max-w-2xl text-3xl font-semibold tracking-[-0.02em] sm:text-4xl"
+          className="mt-3 max-w-2xl text-3xl tracking-[-0.01em] sm:text-4xl"
           style={{ color: INK }}
         >
           From “tell me about your org” to a briefing in under three minutes.
@@ -662,7 +662,7 @@ function HowItWorks() {
                 {s.k}
               </span>
               <h3
-                className="mt-4 text-lg font-semibold tracking-tight"
+                className="mt-4 text-xl tracking-tight"
                 style={{ color: INK }}
               >
                 {s.title}
@@ -682,7 +682,7 @@ function ClosingCta() {
   return (
     <section className="px-5 py-28 text-center sm:px-8">
       <h2
-        className="mx-auto max-w-2xl text-4xl font-semibold tracking-[-0.03em] sm:text-5xl"
+        className="mx-auto max-w-2xl text-4xl tracking-[-0.015em] sm:text-5xl"
         style={{ color: INK }}
       >
         See what Volition finds for you.

@@ -302,7 +302,7 @@ function DonorSignals({ signals }: { signals: DonorSignal[] }) {
   );
 }
 
-export function EventDetail({ event }: { event: Event }) {
+export function EventDetail({ event, matchId }: { event: Event; matchId?: string }) {
   return (
     <div className="min-h-screen w-full bg-background px-4 py-10 sm:px-8">
       <div className="mx-auto max-w-2xl space-y-6">
@@ -336,6 +336,15 @@ export function EventDetail({ event }: { event: Event }) {
         <Participants speakers={event.speakers} sponsors={event.sponsors} />
         {event.donorSignals.length > 0 && (
           <DonorSignals signals={event.donorSignals} />
+        )}
+
+        {matchId && (
+          <Link
+            href={`/debriefs/${matchId}`}
+            className="inline-flex items-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground"
+          >
+            Add debrief
+          </Link>
         )}
       </div>
     </div>

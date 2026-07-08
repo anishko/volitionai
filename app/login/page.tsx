@@ -4,7 +4,6 @@
 // Styled to match the landing page: olive/greige theme, wordmark nav, one
 // centered paper card. Type comes from the global scheme (Gambarino
 // headings / Switzer Light body).
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient, supabaseConfigured } from "@/lib/supabase/server";
@@ -17,13 +16,16 @@ export const metadata = {
 function Wordmark() {
   return (
     <span className="flex items-center gap-2">
-      <Image
-        src="/volition-logo.png"
-        alt=""
-        width={28}
-        height={28}
-        className="rounded-md"
-      />
+      <svg width={28} height={28} viewBox="0 0 32 32" fill="none" aria-hidden className="shrink-0">
+        <path
+          d="M6.5 7.5 L16 24.5 L25.5 7.5"
+          stroke="#2c2e23"
+          strokeWidth={5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="22.6" cy="12.6" r="3.1" fill="#fff" />
+      </svg>
       <span className="text-[17px] font-semibold tracking-tight text-foreground">
         Volition
       </span>

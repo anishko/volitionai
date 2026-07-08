@@ -4,6 +4,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient, supabaseConfigured } from "@/lib/supabase/server";
 import { OnboardingForm } from "@/components/onboarding-form";
+import { SignOutButton } from "@/components/sign-out-button";
 
 // Session + profile checks must run per-request, never at build time.
 export const dynamic = "force-dynamic";
@@ -38,6 +39,9 @@ export default async function OnboardingPage() {
           </p>
         </header>
         <OnboardingForm />
+        <div className="mt-8 flex justify-center">
+          <SignOutButton />
+        </div>
       </div>
     </div>
   );

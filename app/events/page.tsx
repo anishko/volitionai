@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient, supabaseConfigured } from "@/lib/supabase/server";
 import { rowToNonprofitProfile, type NonprofitProfileRow } from "@/lib/nonprofit/profile-row";
-import { SignOutButton } from "@/components/sign-out-button";
+import { UserMenu } from "@/components/user-menu";
 import { Badge } from "@/components/ui/badge";
 import { EventsFeed } from "@/components/events-feed";
 import { loadEventFeed } from "@/lib/events/feed";
@@ -91,7 +91,7 @@ export default async function EventsPage({
             >
               Settings
             </Link>
-            <SignOutButton />
+            <UserMenu user={user} />
           </div>
         </header>
 

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient, supabaseConfigured } from "@/lib/supabase/server";
 import { calendarSyncEnabled } from "@/lib/auth/google";
 import { SignOutButton } from "@/components/sign-out-button";
+import { ResetOnboardingButton } from "@/components/reset-onboarding-button";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,29 @@ export default async function SettingsPage() {
                 </p>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* Danger zone */}
+        <section aria-labelledby="danger-heading">
+          <h2
+            id="danger-heading"
+            className="mb-4 text-xs font-medium uppercase tracking-widest text-red-400"
+          >
+            Danger zone
+          </h2>
+          <div className="rounded-lg border border-red-200 bg-white px-5 py-4 dark:border-red-900/50 dark:bg-zinc-950">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                  Restart onboarding
+                </p>
+                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                  Deletes your org profile, all matched events, and your plan. Cannot be undone.
+                </p>
+              </div>
+              <ResetOnboardingButton />
+            </div>
           </div>
         </section>
 

@@ -360,3 +360,25 @@ export async function PATCH(req: NextRequest) {
     );
   }
 }
+
+export async function DELETE() {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+
+    const { error } = await supabase
+      .from("nonprofit_profiles")
+      .delete()
+      .eq("user_id", user.id);
+    if (error) throw error;
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[/api/nonprofit/profile DELETE]", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to reset profile." },
+      { status: 500 },
+    );
+  }
+}

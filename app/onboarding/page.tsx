@@ -24,16 +24,14 @@ export default async function OnboardingPage() {
   if (profile) redirect("/events");
 
   return (
-    <div className="min-h-screen w-full bg-zinc-50 px-4 py-10 dark:bg-black sm:px-8">
+    <div className="min-h-screen w-full bg-background px-4 py-10 sm:px-8">
       <div className="mx-auto max-w-2xl">
-        <header className="mb-8 text-center">
-          <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
-            Volition
-          </p>
-          <h1 className="mt-1 text-3xl tracking-tight text-zinc-900 dark:text-zinc-50">
+        <header className="mb-10 text-center">
+          <p className="eyebrow">Volition</p>
+          <h1 className="mt-3 text-4xl tracking-[-0.01em] text-foreground">
             Tell us about your org.
           </h1>
-          <p className="mx-auto mt-2 max-w-lg text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground">
             About two minutes, once. Pick your cause areas, donors, and goals —
             we build a persistent profile locally and use it to find events
             where your target donors actually show up.

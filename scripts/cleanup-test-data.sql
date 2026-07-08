@@ -116,6 +116,21 @@ from public.events
 where is_seed = false
 order by created_at;
 
+-- OPTIONAL DIAGNOSTIC — cost telemetry linked to the TEST profile. query_costs
+-- rows carry entity_id = TEST profile_id for every run type. entity_id is a
+-- plain uuid (NOT a foreign key), so these rows are NOT cascade-deleted with
+-- the profile; they persist unless you run the OPTIONAL step 4b. Note this
+-- count/total if you plan to compare afterward (post-check needs the captured
+-- profile UUID — see STEP 3, since org_name no longer resolves once deleted).
+select
+  count(*)            as query_costs_test_pre,
+  coalesce(sum(usd), 0) as query_costs_test_usd_pre
+from public.query_costs
+where entity_id = (
+  select id from public.nonprofit_profiles
+  where org_name = 'TEST — Liberty Legal Aid (pipeline acceptance)'
+);
+
 
 -- ============================================================================
 -- STEP 2 — DELETE (one transaction, FK-safe leaf -> root order).
@@ -143,6 +158,13 @@ order by created_at;
 --   * nonprofit_profiles: the single TEST profile row (org_name match).
 --   * auth.users       : the single synthetic acceptance user (email match).
 --                        Cascades its auth.identities / sessions automatically.
+--   * query_costs      : OPTIONAL, off by default (step 4b, commented). Every
+--                        test run wrote entity_id = TEST profile_id (all run
+--                        types: profile_extraction / event_match / outreach_
+--                        draft). entity_id is NOT a foreign key, so these cost
+--                        rows do NOT cascade with the profile — they orphan
+--                        harmlessly and stay unless you uncomment step 4b. You
+--                        decide at run time whether the cost telemetry stays.
 --   * events           : NOT DELETED. Assumption: the events the acceptance run
 --                        matched are SEED rows (is_seed = true) — Firecrawl was
 --                        unconfigured during acceptance, so the scrape stage
@@ -195,6 +217,18 @@ where profile_id = (
   select id from public.nonprofit_profiles
   where org_name = 'TEST — Liberty Legal Aid (pipeline acceptance)'
 );
+
+-- 4b. OPTIONAL — cost telemetry for the TEST profile. LEFT COMMENTED by default:
+--     the cost ledger is kept, and its rows orphan harmlessly once the profile
+--     is gone (entity_id is not a foreign key). UNCOMMENT to purge it instead.
+--     Must run BEFORE step 5 so the org_name anchor still resolves the id.
+--     entity_id = TEST profile_id covers every test run type
+--     (profile_extraction / event_match / outreach_draft all set it).
+-- delete from public.query_costs
+-- where entity_id = (
+--   select id from public.nonprofit_profiles
+--   where org_name = 'TEST — Liberty Legal Aid (pipeline acceptance)'
+-- );
 
 -- 5. nonprofit_profiles (child of auth.users; parent of matches + plans)
 delete from public.nonprofit_profiles
@@ -268,3 +302,11 @@ where email = 'test-pipeline@volition.local';  -- expect 0
 select count(*) as seed_events_post
 from public.events
 where is_seed = true;
+
+-- OPTIONAL — query_costs post-check. The profile row is gone, so the org_name
+-- anchor no longer resolves; paste the TEST profile UUID captured in STEP 0.
+-- If you uncommented step 4b, expect 0; if you left it, expect the STEP 1
+-- number (rows now orphaned by entity_id, which is harmless).
+-- select count(*) as query_costs_test_post
+-- from public.query_costs
+-- where entity_id = '<paste TEST profile UUID from STEP 0>';

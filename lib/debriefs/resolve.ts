@@ -21,6 +21,8 @@ export interface PlanResolution {
   plan: EventPlanFull | null;
   /** false → matchId didn't resolve to a match the caller owns. */
   matchFound: boolean;
+  /** The match's event id — lets the no-plan UI link to the add-to-plan flow. */
+  eventId: string | null;
 }
 
 export async function resolvePlanForMatch(
@@ -33,7 +35,7 @@ export async function resolvePlanForMatch(
     .eq("id", matchId)
     .maybeSingle();
   if (matchErr) throw matchErr;
-  if (!match) return { plan: null, matchFound: false };
+  if (!match) return { plan: null, matchFound: false, eventId: null };
 
   const { data: planRow, error: planErr } = await supabase
     .from("event_plans")
@@ -46,6 +48,7 @@ export async function resolvePlanForMatch(
   return {
     plan: planRow ? rowToEventPlan(planRow as EventPlanRow) : null,
     matchFound: true,
+    eventId: match.event_id,
   };
 }
 

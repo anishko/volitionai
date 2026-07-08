@@ -61,14 +61,15 @@ export async function GET(req: NextRequest) {
     }
 
     if (matchId) {
-      const { plan, matchFound } = await resolvePlanForMatch(supabase, matchId);
+      const { plan, matchFound, eventId } = await resolvePlanForMatch(supabase, matchId);
       if (!matchFound) {
         return NextResponse.json({ error: "Match not found." }, { status: 404 });
       }
       // Event isn't in the plan yet → no debrief is possible (FK requires a
-      // plan). UI renders an "add this event to your plan first" state.
+      // plan). UI renders an "add this event to your plan first" state; eventId
+      // lets it link to the add-to-plan flow.
       if (!plan) {
-        return NextResponse.json({ plan: null, debrief: null, planExists: false });
+        return NextResponse.json({ plan: null, debrief: null, planExists: false, eventId });
       }
       const debrief = await debriefForPlan(supabase, plan.id);
       return NextResponse.json({ plan, debrief, planExists: true });

@@ -15,6 +15,20 @@
   cached persona. Do not claim cached demo insurance for the events experience
   until it is wired in.
 
+## Structured event APIs (best-effort — honest degradation)
+- **Eventbrite** (`lib/events/sources/eventbrite.ts`, wraps
+  `lib/data/eventbrite.ts`) and **Meetup** (`lib/events/sources/meetup.ts`,
+  wraps `lib/data/meetup.ts`) sit behind the PR4 source router
+  (`lib/events/sources/router.ts`). Both are **best-effort enrichment**, not a
+  feed guarantee — Eventbrite's public event-search endpoint is largely
+  retired/restricted (404 → "source unavailable" notice, empty contribution,
+  run continues); Meetup's free GraphQL API may reject or rate-limit (notice +
+  empty). Every adapter call still emits a CostEvent (Eventbrite/Meetup at
+  $0). Unconfigured keys degrade cleanly: `EVENTBRITE_API_KEY`,
+  `MEETUP_ACCESS_TOKEN`.
+- The legacy ideas pipeline (`lib/pipeline/run.ts`) still calls Eventbrite
+  directly; the events pipeline will route through the adapter in PR6.
+
 ## Community-event adapters (real, but conditional — honest degradation)
 - Meetup (`lib/data/meetup.ts`, official free API, metered at $0) and Luma
   (`lib/data/luma.ts`, Firecrawl scrape of public pages) **no-op cleanly when

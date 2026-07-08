@@ -34,6 +34,7 @@ function makeEvent(overrides: Partial<Event>): Event {
     donorSignals: [],
     timingSignals: [],
     scrapeCount: 1,
+    sourceUrls: [],
     createdAt: new Date().toISOString(),
     ...overrides,
   };

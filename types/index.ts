@@ -151,6 +151,8 @@ export interface Event {
   timingSignals: TimingSignal[];
   scrapeCount: number;
   lastScrapedAt?: string;
+  /** Every URL that contributed fields to this corpus row (PR5 / ADR-0006). */
+  sourceUrls: string[];
   createdAt: string;
 }
 

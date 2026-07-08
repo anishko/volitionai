@@ -104,6 +104,9 @@ function Logistics({ event }: { event: Event }) {
       ),
     },
   ];
+  const extraSources = event.sourceUrls.filter(
+    (url) => url.toLowerCase() !== event.website.toLowerCase(),
+  );
   return (
     <Section title="Logistics">
       <dl className="grid grid-cols-[7rem_1fr] gap-y-3 text-sm">
@@ -118,6 +121,20 @@ function Logistics({ event }: { event: Event }) {
           </div>
         ))}
       </dl>
+      {extraSources.length > 0 && (
+        <div className="mt-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-400">
+            Additional sources
+          </p>
+          <ul className="space-y-1 text-sm">
+            {extraSources.map((url) => (
+              <li key={url}>
+                <SourceLink href={url} label={url} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </Section>
   );
 }

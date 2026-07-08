@@ -1,20 +1,20 @@
-// The event-matching orchestrator (issue #4). PLAN → SEARCH → SCRAPE →
-// ENRICH (990) → FILTER (rules) → EXPLAIN (cloud) → SCORE + STORE.
-// Every stage emits CostEvents into one meter; the caller persists them with
-// run_type "event_match". Live stages degrade gracefully: if Tavily or
-// Firecrawl is down, seed-corpus matches still come back with a notice.
+// Event-matching orchestrator (ADR-0003): PLAN → SOURCE → FILTER → finalists →
+// UNIFORM scrape → ENRICH → EXPLAIN → STORE.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CostMeter, newRunId } from "@/lib/ai/cost";
 import type { DonorSignal, Event, EventMatch, MatchTier, NonprofitProfile } from "@/types";
 import type { CostEvent, CostReceipt } from "@/types/cost";
+import { buildCandidatePool } from "./candidates";
+import { finalistsToScrape } from "./finalists";
 import { planEventQueries } from "./plan";
-import { searchEventCandidates, MAX_TAVILY_SEARCHES_PER_RUN, type EventSearchCandidate } from "./search";
+import { provisionalToScraped, rebuildEventPool } from "./pool";
 import { scrapeEventCandidates, MAX_FIRECRAWL_PAGES_PER_RUN } from "./scrape";
 import { enrichDonorSignals } from "./enrich";
 import { filterCandidates, scoreEvent, type TieredEvent } from "./filter";
 import { explainMatches } from "./explain";
+import { eventNeedsScrape } from "./staleness";
 import { validateEventFields } from "./validate";
-import { discoverCommunityEvents } from "./community";
+import { fetchSourceCandidates } from "./sources";
 import {
   loadEventCorpus,
   upsertDiscoveredEvents,
@@ -22,10 +22,7 @@ import {
   writeDonorSignals,
 } from "./store";
 
-// Finalists sent to the cloud explainer (issue: top 10-20).
 const FINALIST_COUNT = 12;
-// Firecrawl pages per run: default well under the 15-page hard cap
-// (docs/DATA_SOURCES.md: "use sparingly, top 3-5 URLs per run").
 const SCRAPE_PAGES_DEFAULT = 5;
 
 export interface EventMatchRunMeta {
@@ -39,14 +36,8 @@ export interface EventMatchRunMeta {
   finalists: number;
   donorSignalEvents: number;
   cloudModel: string;
-  /** Finalists dropped because no evidence claim survived citation validation
-   *  (citation or no signal). A receipt/observability stat — a persistently
-   *  high count points at scraping that needs improvement. */
   matchesDroppedForNoCitation: number;
-  /** Human-readable notes for each budget ceiling that truncated work this run
-   *  (Tavily credits / Firecrawl pages). Empty when nothing hit a cap. */
   budgetStops: string[];
-  /** Loosest relaxation-cascade tier the filter had to reach (ADR-0004). */
   deepestTier: MatchTier;
   notices: string[];
 }
@@ -58,12 +49,9 @@ export interface EventMatchRunResult {
   meta: EventMatchRunMeta;
 }
 
-function domainOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
-  } catch {
-    return url.toLowerCase();
-  }
+function isPast(event: Event, today: string): boolean {
+  const last = event.endDate ?? event.startDate;
+  return Boolean(last && last < today);
 }
 
 function selectFinalists(
@@ -103,11 +91,10 @@ export async function runEventMatch(
   const meter = new CostMeter(runId);
   const notices: string[] = [];
   const budgetStops: string[] = [];
+  const today = new Date().toISOString().slice(0, 10);
 
-  // Candidate set always starts from the shared corpus (seed + prior finds).
-  const corpus = await loadEventCorpus(admin);
+  let corpus = await loadEventCorpus(admin);
 
-  // 1. PLAN (local) — a planner failure only costs us live search, not the run.
   let queries: string[] = [];
   try {
     queries = (await planEventQueries(meter, profile)).queries;
@@ -116,110 +103,83 @@ export async function runEventMatch(
     console.warn("[events/run] planning failed:", err instanceof Error ? err.message : err);
   }
 
-  // 2. SEARCH (Tavily, capped) — same degradation contract.
-  let candidates: EventSearchCandidate[] = [];
-  if (queries.length > 0) {
-    try {
-      const search = await searchEventCandidates(meter, queries);
-      candidates = search.candidates;
-      if (search.stoppedAtBudget) {
-        const note = `Live search stopped at the ${MAX_TAVILY_SEARCHES_PER_RUN}-credit Tavily budget; some planned queries were not run.`;
-        budgetStops.push(note);
-        notices.push(note);
-      }
-      if (search.searchesFailed > 0) {
-        notices.push(
-          `${search.searchesFailed} of ${search.searchesRun + search.searchesFailed} live searches failed; results may be partial.`,
-        );
-      }
-    } catch (err) {
-      notices.push("Live event search unavailable; matched against the event corpus only.");
-      console.warn("[events/run] search failed:", err instanceof Error ? err.message : err);
-    }
-  } else {
-    meter.tavily({ stage: "event_search", searches: 0, latencyMs: 0 });
-  }
-
-  // Spend the scrape budget on unknown events first; known domains are
-  // already represented in the corpus and only need a staleness refresh.
-  const knownDomains = new Set(corpus.map((e) => domainOf(e.website)));
-  candidates.sort(
-    (a, b) => Number(knownDomains.has(domainOf(a.url))) - Number(knownDomains.has(domainOf(b.url))),
-  );
-
-  // 3. SCRAPE (Firecrawl + local extraction, capped).
-  const scrape = await scrapeEventCandidates(meter, candidates, SCRAPE_PAGES_DEFAULT);
-  if (scrape.skippedReason) notices.push(scrape.skippedReason);
-  if (scrape.stoppedAtBudget) {
-    const note = `Scraping stopped at the ${MAX_FIRECRAWL_PAGES_PER_RUN}-page Firecrawl budget; some candidate pages were not scraped.`;
-    budgetStops.push(note);
-    notices.push(note);
-  }
-  if (scrape.pagesFailed > 0) {
-    notices.push(`${scrape.pagesFailed} event page(s) could not be scraped; results may be partial.`);
-  }
-
-  // 3b. COMMUNITY DISCOVERY (Meetup API + Luma scrape) — both no-op cleanly when
-  // unconfigured. Skews virtual, which matters most to budget-sensitive orgs.
-  const community = await discoverCommunityEvents(meter, profile);
-  for (const note of community.notices) notices.push(note);
-
-  // Store all discovered events (deep-scraped + community) into the shared
-  // corpus (merge-or-insert) under the same dedupe + citation rules.
-  const toUpsert = [...scrape.events, ...community.events];
-  let discovered: Event[] = [];
-  let inserted = 0;
-  let merged = 0;
-  if (toUpsert.length > 0) {
-    const upserted = await upsertDiscoveredEvents(admin, toUpsert, corpus);
-    discovered = upserted.events;
-    inserted = upserted.inserted;
-    merged = upserted.merged;
-  }
-
-  // Candidate set = corpus + fresh versions of anything just scraped. Every
-  // event is field-validated (citation or no signal) before it can be matched
-  // on or reach the explainer's allow-set — nothing unsourced survives.
-  const refreshedIds = new Set(discovered.map((e) => e.id));
-  const allEvents = [...corpus.filter((e) => !refreshedIds.has(e.id)), ...discovered].map(
-    validateEventFields,
-  );
-
-  // 4. ENRICH (ProPublica 990) — free API, still metered.
-  let signalsByEvent = new Map<string, DonorSignal[]>();
+  let candidatesFound = 0;
+  let organizerUrls: Record<string, string> = {};
+  let poolEvents = corpus;
   try {
-    const enrichment = await enrichDonorSignals(meter, allEvents);
-    signalsByEvent = enrichment.signalsByEvent;
-    if (enrichment.lookupsFailed > 0) {
-      notices.push("Some donor-signal lookups failed; donor signals may be incomplete.");
-    }
+    const sourced = await fetchSourceCandidates(meter, profile, queries);
+    candidatesFound = sourced.candidates.length;
+    notices.push(...sourced.notices);
+    budgetStops.push(...sourced.budgetStops);
+    const pool = buildCandidatePool(corpus, sourced.candidates, profile);
+    organizerUrls = pool.organizerUrls;
+    poolEvents = pool.events;
   } catch (err) {
-    notices.push("Donor-signal enrichment unavailable for this run.");
-    console.warn("[events/run] enrichment failed:", err instanceof Error ? err.message : err);
+    notices.push("Live source discovery unavailable; matched against the event corpus only.");
+    console.warn("[events/run] source router failed:", err instanceof Error ? err.message : err);
   }
 
-  // Persist fresh donor signals onto the events themselves (acceptance:
-  // donor_signals written even where the UI does not yet display them).
-  for (const event of allEvents) {
-    const signals = signalsByEvent.get(event.id);
-    if (!signals || signals.length === 0) continue;
-    try {
-      await writeDonorSignals(admin, event, signals);
-    } catch (err) {
-      console.warn("[events/run] donor signal write failed:", err instanceof Error ? err.message : err);
-    }
-  }
-
-  // 5. FILTER (relaxation cascade, before any cloud spend).
-  const filtered = filterCandidates(profile, allEvents);
-  if (filtered.relaxed) {
+  let allEvents = poolEvents.map(validateEventFields);
+  const preFilter = filterCandidates(profile, allEvents);
+  if (preFilter.relaxed) {
     notices.push(
       "Not enough exact matches; results were broadened to related causes or virtual events (labeled by tier).",
     );
   }
 
-  // Preliminary deterministic score picks the finalists.
-  const finalists = selectFinalists(profile, filtered.kept, refreshedIds, signalsByEvent);
+  const prelimFinalists = selectFinalists(profile, preFilter.kept, new Set(), new Map());
+
+  const freshStructured = prelimFinalists
+    .filter(
+      ({ event }) =>
+        event.id.startsWith("provisional:") && !eventNeedsScrape(event),
+    )
+    .map(({ event }) => provisionalToScraped(event));
+
+  let discovered: Event[] = [];
+  let inserted = 0;
+  let merged = 0;
+
+  if (freshStructured.length > 0) {
+    const upserted = await upsertDiscoveredEvents(admin, freshStructured, corpus, organizerUrls);
+    discovered.push(...upserted.events);
+    inserted += upserted.inserted;
+    merged += upserted.merged;
+  }
+
+  const scrapeTargets = finalistsToScrape(
+    prelimFinalists.map((f) => f.event),
+    SCRAPE_PAGES_DEFAULT,
+  );
+  const scrape = await scrapeEventCandidates(meter, scrapeTargets, SCRAPE_PAGES_DEFAULT);
+  if (scrape.skippedReason) notices.push(scrape.skippedReason);
+  if (scrape.stoppedAtBudget) {
+    const note = `Scraping stopped at the ${MAX_FIRECRAWL_PAGES_PER_RUN}-page Firecrawl budget; some finalist pages were not scraped.`;
+    budgetStops.push(note);
+    notices.push(note);
+  }
+  if (scrape.pagesFailed > 0) {
+    notices.push(`${scrape.pagesFailed} finalist page(s) could not be scraped; results may be partial.`);
+  }
+
+  if (scrape.events.length > 0) {
+    const upserted = await upsertDiscoveredEvents(admin, scrape.events, corpus, organizerUrls);
+    discovered.push(...upserted.events);
+    inserted += upserted.inserted;
+    merged += upserted.merged;
+  }
+
+  corpus = await loadEventCorpus(admin);
+  allEvents = rebuildEventPool(corpus, discovered, poolEvents).map(validateEventFields);
+
+  const filtered = filterCandidates(profile, allEvents);
+  const refreshedIds = new Set(discovered.map((e) => e.id));
+  const finalists = selectFinalists(
+    profile,
+    filtered.kept.filter((t) => !isPast(t.event, today)),
+    refreshedIds,
+    new Map(),
+  );
 
   if (finalists.length === 0) {
     notices.push("No upcoming events matched this profile, even with broadened criteria.");
@@ -230,13 +190,13 @@ export async function runEventMatch(
       meta: {
         runId,
         queries,
-        candidatesFound: candidates.length,
+        candidatesFound,
         pagesScraped: scrape.pagesScraped,
         eventsDiscovered: inserted,
         eventsMerged: merged,
         corpusSize: allEvents.length,
         finalists: 0,
-        donorSignalEvents: signalsByEvent.size,
+        donorSignalEvents: 0,
         cloudModel: "",
         matchesDroppedForNoCitation: 0,
         budgetStops,
@@ -246,7 +206,31 @@ export async function runEventMatch(
     };
   }
 
-  // 6. EXPLAIN (cloud, finalists only).
+  let signalsByEvent = new Map<string, DonorSignal[]>();
+  try {
+    const enrichment = await enrichDonorSignals(
+      meter,
+      finalists.map((f) => f.event),
+    );
+    signalsByEvent = enrichment.signalsByEvent;
+    if (enrichment.lookupsFailed > 0) {
+      notices.push("Some donor-signal lookups failed; donor signals may be incomplete.");
+    }
+  } catch (err) {
+    notices.push("Donor-signal enrichment unavailable for this run.");
+    console.warn("[events/run] enrichment failed:", err instanceof Error ? err.message : err);
+  }
+
+  for (const { event } of finalists) {
+    const signals = signalsByEvent.get(event.id);
+    if (!signals || signals.length === 0 || event.id.startsWith("provisional:")) continue;
+    try {
+      await writeDonorSignals(admin, event, signals);
+    } catch (err) {
+      console.warn("[events/run] donor signal write failed:", err instanceof Error ? err.message : err);
+    }
+  }
+
   const withSignals = finalists.map(({ event, matchTier }) => ({
     event,
     matchTier,
@@ -264,15 +248,14 @@ export async function runEventMatch(
     );
   }
 
-  // 7. VALIDATE + SCORE + STORE. Citation or no signal (STRICT): a finalist
-  // whose evidence did not survive validation carries zero sourced claims and
-  // is DROPPED — never written, never padded with a fabricated citation. The
-  // dropped count is surfaced (receipt/observability); the honest empty state
-  // handles a feed that thins out as a result.
   let matchesDroppedForNoCitation = 0;
   const writes = withSignals.flatMap((f, i) => {
     const explanation = explained.explanations[i];
     if (explanation.evidence.length === 0) {
+      matchesDroppedForNoCitation += 1;
+      return [];
+    }
+    if (f.event.id.startsWith("provisional:")) {
       matchesDroppedForNoCitation += 1;
       return [];
     }
@@ -309,7 +292,7 @@ export async function runEventMatch(
     meta: {
       runId,
       queries,
-      candidatesFound: candidates.length,
+      candidatesFound,
       pagesScraped: scrape.pagesScraped,
       eventsDiscovered: inserted,
       eventsMerged: merged,

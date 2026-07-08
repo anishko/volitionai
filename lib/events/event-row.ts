@@ -34,6 +34,8 @@ export interface EventRow {
   timing_signals: Record<string, unknown>[];
   scrape_count: number;
   last_scraped_at: string | null;
+  identity_key: string | null;
+  source_urls: string[];
   created_at: string;
 }
 
@@ -123,6 +125,7 @@ export function rowToEvent(row: EventRow): Event {
     }),
     scrapeCount: row.scrape_count,
     lastScrapedAt: row.last_scraped_at ?? undefined,
+    sourceUrls: row.source_urls ?? (row.website ? [row.website] : []),
     createdAt: row.created_at,
   };
 }

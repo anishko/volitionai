@@ -27,6 +27,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sortEventFeedItems, type EventFeedItem } from "@/lib/events/feed-item";
+import { feedBroadenedNotice, matchTierLabel } from "@/lib/events/match-tier-label";
 import { CostReceiptCard } from "@/components/cost-receipt";
 import type { EventMatchStatus, MatchRun } from "@/types";
 import type { CostReceipt } from "@/types/cost";
@@ -204,6 +205,18 @@ function EventCard({
               <MapPin className="size-3.5" />
               {formatLocation(item.event)}
             </span>
+            {(() => {
+              const tier = matchTierLabel(item.matchTier);
+              if (!tier) return null;
+              return (
+                <span
+                  className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+                  title={tier.tooltip}
+                >
+                  {tier.short}
+                </span>
+              );
+            })()}
           </div>
           <CardTitle className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">
             {item.event.name}
@@ -406,6 +419,10 @@ export function EventsFeed({
     [items],
   );
   const saved = useMemo(() => items.filter((item) => item.status === "saved"), [items]);
+  const broadenedNotice = useMemo(
+    () => feedBroadenedNotice(items.some((item) => item.matchTier !== "strict")),
+    [items],
+  );
 
   async function updateStatus(id: string, status: MatchActionStatus) {
     const previous = items;
@@ -476,6 +493,12 @@ export function EventsFeed({
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
           {error ?? (run?.status === "failed" ? run.error : null) ?? "Live search is taking longer than expected."}{" "}
           {items.length > 0 && "Your matched events below are unaffected."}
+        </div>
+      )}
+
+      {broadenedNotice && (
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300">
+          {broadenedNotice}
         </div>
       )}
 

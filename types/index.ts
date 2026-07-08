@@ -199,3 +199,23 @@ export interface IdeaCard {
   donorType?: "individual" | "foundation" | "pac" | "corporate";
   approachAngle?: string;      // how to make first contact, grounded in evidence
 }
+
+// ---------------------------------------------------------------------------
+// Phase 5 outreach drafting (docs/NONPROFIT_EVENTS_PRD.md → "Outreach
+// drafting"). The AI prepares; the human sends. Drafts are generated LOCALLY in
+// the org's voice and carry the match's cited claims they drew on. Additive —
+// mirrors the outreach_drafts table (snake_case in the DB).
+// ---------------------------------------------------------------------------
+
+export type OutreachDraftType = "sponsor_pitch" | "cfp_abstract" | "intro_email";
+export type OutreachModelRoute = "local" | "cloud" | "fallback:cloud";
+
+export interface OutreachDraft {
+  id: string;
+  matchId: string;
+  draftType: OutreachDraftType;
+  body: string;
+  evidence: SourcedClaim[];    // the match's cited claims this draft drew on
+  modelRoute: OutreachModelRoute;
+  createdAt: string;
+}

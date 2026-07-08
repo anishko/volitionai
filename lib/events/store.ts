@@ -4,6 +4,7 @@
 // enriches the table for every future user (the moat).
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DonorSignal, Event, MatchTier, SourcedClaim } from "@/types";
+import { isMissingMatchTierColumn } from "@/lib/supabase/schema-errors";
 import {
   contactsToJson,
   donorSignalsToJson,
@@ -237,10 +238,31 @@ export async function upsertMatches(
     status: "recommended" as const,
     created_at: verifiedAt,
   }));
-  const { data, error } = await admin
+  let { data, error } = await admin
     .from("event_matches")
     .upsert(rows, { onConflict: "profile_id,event_id" })
     .select("*");
+  if (error && isMissingMatchTierColumn(error)) {
+    console.warn(
+      "[events/store] match_tier column is not applied yet; upserting matches without tier.",
+    );
+    const legacyRows = writes.map((w) => ({
+      profile_id: profileId,
+      event_id: w.eventId,
+      match_score: w.matchScore,
+      why_attend: w.whyAttend,
+      donor_signal_callout: w.donorSignalCallout ?? null,
+      evidence: evidenceToJson(w.evidence),
+      status: "recommended" as const,
+      created_at: verifiedAt,
+    }));
+    const retry = await admin
+      .from("event_matches")
+      .upsert(legacyRows, { onConflict: "profile_id,event_id" })
+      .select("*");
+    data = retry.data;
+    error = retry.error;
+  }
   if (error) throw error;
   return ((data ?? []) as EventMatchRow[]).map(rowToEventMatch);
 }

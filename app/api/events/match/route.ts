@@ -73,6 +73,15 @@ export async function POST(req: NextRequest) {
 
     const admin = createSupabaseAdminClient();
     const run = await createMatchRun(admin, profile.id, "live_running");
+    if (!run) {
+      return NextResponse.json(
+        {
+          error:
+            "Match run tracking is not available (database migrations pending). Apply supabase db push.",
+        },
+        { status: 503 },
+      );
+    }
     const result = await runLiveMatchTracked(admin, profile, run.id);
 
     if (!result) {

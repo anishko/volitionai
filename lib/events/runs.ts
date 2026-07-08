@@ -5,6 +5,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MatchRun, MatchRunStatus, NonprofitProfile } from "@/types";
 import { persistCostEvents } from "@/lib/supabase/costs";
+import { isMissingMatchRunsTable } from "@/lib/supabase/schema-errors";
 import { runEventMatch, type EventMatchRunResult } from "./run";
 
 // Wall-clock budget for the live run. Stage-level timeouts should finish far
@@ -38,13 +39,21 @@ export async function createMatchRun(
   admin: SupabaseClient,
   profileId: string,
   status: MatchRunStatus,
-): Promise<MatchRun> {
+): Promise<MatchRun | null> {
   const { data, error } = await admin
     .from("match_runs")
     .insert({ profile_id: profileId, status })
     .select("*")
     .single();
-  if (error) throw error;
+  if (error) {
+    if (isMissingMatchRunsTable(error)) {
+      console.warn(
+        "[events/runs] match_runs table is not applied yet; run state tracking disabled.",
+      );
+      return null;
+    }
+    throw error;
+  }
   return rowToMatchRun(data as MatchRunRow);
 }
 
@@ -59,7 +68,10 @@ export async function updateMatchRun(
   if (patch.error !== undefined) row.error = patch.error;
   if (patch.finished) row.finished_at = new Date().toISOString();
   const { error } = await admin.from("match_runs").update(row).eq("id", runId);
-  if (error) throw error;
+  if (error) {
+    if (isMissingMatchRunsTable(error)) return;
+    throw error;
+  }
 }
 
 /** Latest run for a profile; works with the user-scoped client (owner RLS). */
@@ -74,7 +86,10 @@ export async function latestMatchRun(
     .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw error;
+  if (error) {
+    if (isMissingMatchRunsTable(error)) return null;
+    throw error;
+  }
   return data ? rowToMatchRun(data as MatchRunRow) : null;
 }
 

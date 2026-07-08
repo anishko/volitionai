@@ -163,11 +163,12 @@ export async function POST(req: NextRequest) {
     const admin = createSupabaseAdminClient();
     let matchRun: MatchRun | null = null;
     let floorMatches = 0;
+    let floorError: string | null = null;
     try {
       const floor = await runSeedFloor(admin, profile);
       floorMatches = floor.matches.length;
       matchRun = await createMatchRun(admin, profile.id, "floor_ready");
-      if (floor.relaxed) {
+      if (matchRun && floor.relaxed) {
         await updateMatchRun(admin, matchRun.id, {
           notices: [
             "Not enough exact matches; results were broadened to related causes or virtual events (labeled by tier).",
@@ -175,8 +176,10 @@ export async function POST(req: NextRequest) {
         });
       }
     } catch (err) {
+      floorError =
+        err instanceof Error ? err.message : "Initial event matching failed.";
       console.error("[/api/nonprofit/profile POST] seed floor failed:", err);
-      matchRun = await createMatchRun(admin, profile.id, "failed").catch(() => null);
+      matchRun = await createMatchRun(admin, profile.id, "failed");
       if (matchRun) {
         await updateMatchRun(admin, matchRun.id, {
           error: "Initial matching failed; retry from the events page.",
@@ -197,6 +200,7 @@ export async function POST(req: NextRequest) {
       receipt: meter.receipt(),
       costsPersisted: persisted,
       floorMatches,
+      floorError,
       matchRunId: matchRun?.id ?? null,
     });
   } catch (err) {

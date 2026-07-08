@@ -66,5 +66,6 @@ export const config = {
     "/events/:path*",
     "/auth/:path*",
     "/api/nonprofit/:path*",
+    "/api/events/:path*",
   ],
 };

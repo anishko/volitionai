@@ -6,11 +6,18 @@ import { Badge } from "@/components/ui/badge";
 import { EventsFeed } from "@/components/events-feed";
 import { loadEventFeed } from "@/lib/events/feed";
 import { latestMatchRun } from "@/lib/events/runs";
+import type { EventFeedItem } from "@/lib/events/feed-item";
+import type { MatchRun } from "@/types";
 
 // Session + profile checks must run per-request, never at build time.
 export const dynamic = "force-dynamic";
 
-export default async function EventsPage() {
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string }>;
+}) {
+  const { notice } = await searchParams;
   if (!supabaseConfigured()) redirect("/login");
   const supabase = await createSupabaseServerClient();
   const {
@@ -29,10 +36,20 @@ export default async function EventsPage() {
   const extracted = profile.extractedProfile as
     | { missionSummary?: string; causeKeywords?: string[]; eventSearchHints?: string[] }
     | undefined;
-  const [initialItems, initialRun] = await Promise.all([
-    loadEventFeed(supabase, profile.id),
-    latestMatchRun(supabase, profile.id),
-  ]);
+
+  let initialItems: EventFeedItem[] = [];
+  let initialRun: MatchRun | null = null;
+  let feedLoadError: string | null = null;
+  try {
+    [initialItems, initialRun] = await Promise.all([
+      loadEventFeed(supabase, profile.id),
+      latestMatchRun(supabase, profile.id),
+    ]);
+  } catch (err) {
+    console.error("[/events] failed to load feed or match run:", err);
+    feedLoadError =
+      err instanceof Error ? err.message : "Could not load your recommended events.";
+  }
 
   return (
     <div className="min-h-screen w-full bg-zinc-50 px-4 py-8 dark:bg-black sm:px-8">
@@ -63,7 +80,31 @@ export default async function EventsPage() {
           <SignOutButton />
         </header>
 
-        <EventsFeed profileId={profile.id} initialItems={initialItems} initialRun={initialRun} />
+        {notice === "seed-failed" && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+            Your profile was saved, but initial event matching did not complete. Use
+            &quot;Find more events&quot; below to retry.
+          </div>
+        )}
+        {notice === "seed-empty" && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+            Your profile was saved, but no events matched yet. Use &quot;Find more
+            events&quot; below to run a full search.
+          </div>
+        )}
+
+        {feedLoadError && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+            {feedLoadError} Try &quot;Find more events&quot; below, or ask your admin to run{" "}
+            <code className="text-xs">supabase db push</code>.
+          </div>
+        )}
+
+        <EventsFeed
+          profileId={profile.id}
+          initialItems={initialItems}
+          initialRun={initialRun}
+        />
       </div>
     </div>
   );

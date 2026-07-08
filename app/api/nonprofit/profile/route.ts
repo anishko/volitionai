@@ -86,16 +86,16 @@ export async function POST(req: NextRequest) {
         cause_areas: form.causeAreas,
         geography_focus: form.geographyFocus,
         geography_detail: form.geographyDetail ?? null,
+        headquarters: form.headquarters ?? null,
+        cities_of_interest: form.citiesOfInterest ?? [],
+        regions_of_interest: form.regionsOfInterest ?? [],
         org_size: form.orgSize,
         current_donor_mix: form.currentDonorMix,
         target_donor_type: form.targetDonorType,
         primary_goal: form.primaryGoal,
         open_ended_notes: form.openEndedNotes ?? null,
         extracted_profile: extracted,
-        // amendment #2/#3 columns (migrations 000700/000800).
         cause_sub_tags: form.causeSubTags ?? [],
-        annual_budget_cap: form.annualBudgetCap ?? null,
-        budget_period: form.budgetPeriod ?? null,
         qualitative_signals: form.qualitativeSignals ?? null,
       })
       .select("*")

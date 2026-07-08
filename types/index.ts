@@ -50,6 +50,11 @@ export interface NonprofitProfile {
   causeAreas: string[];
   geographyFocus?: GeographyFocus;
   geographyDetail?: string;
+  headquarters?: string;
+  citiesOfInterest?: string[];
+  regionsOfInterest?: string[];
+  /** @deprecated Legacy free-text field; use citiesOfInterest + regionsOfInterest */
+  areasOfInterest?: string;
   orgSize?: string;              // budget range, e.g. "under $500k"
   currentDonorMix: string[];     // individual / foundation / corporate / government
   targetDonorType: string[];     // same vocabulary; what they want more of

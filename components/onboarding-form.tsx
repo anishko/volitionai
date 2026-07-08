@@ -11,12 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   CAUSE_AREAS,
   CAUSE_SUB_TAGS,
-  GEOGRAPHY_FOCUS,
   ORG_SIZES,
   DONOR_TYPES,
   PRIMARY_GOALS,
   OnboardingFormSchema,
 } from "@/lib/nonprofit/onboarding-schema";
+import { UsCityPicker, UsCitiesMultiPicker } from "@/components/us-city-picker";
+import { RegionMultiPicker } from "@/components/region-multi-picker";
 
 const CHIP_BASE =
   "rounded-full border px-3 py-1.5 text-sm transition-colors disabled:opacity-50";
@@ -95,16 +96,15 @@ export function OnboardingForm() {
   const [orgName, setOrgName] = useState("");
   const [website, setWebsite] = useState("");
   const [causeAreas, setCauseAreas] = useState<string[]>([]);
-  const [geographyFocus, setGeographyFocus] = useState<string[]>([]);
-  const [geographyDetail, setGeographyDetail] = useState("");
+  const [headquarters, setHeadquarters] = useState("");
+  const [citiesOfInterest, setCitiesOfInterest] = useState<string[]>([]);
+  const [regionsOfInterest, setRegionsOfInterest] = useState<string[]>([]);
   const [orgSize, setOrgSize] = useState<string[]>([]);
   const [currentDonorMix, setCurrentDonorMix] = useState<string[]>([]);
   const [targetDonorType, setTargetDonorType] = useState<string[]>([]);
   const [primaryGoal, setPrimaryGoal] = useState<string[]>([]);
   const [openEndedNotes, setOpenEndedNotes] = useState("");
   const [causeSubTags, setCauseSubTags] = useState<string[]>([]);
-  const [annualBudgetCap, setAnnualBudgetCap] = useState("");
-  const [budgetPeriod, setBudgetPeriod] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,16 +114,16 @@ export function OnboardingForm() {
       orgName,
       website,
       causeAreas,
-      geographyFocus: geographyFocus[0],
-      geographyDetail: geographyDetail || undefined,
+      geographyFocus: "national",
+      headquarters: headquarters || undefined,
+      citiesOfInterest,
+      regionsOfInterest,
       orgSize: orgSize[0],
       currentDonorMix,
       targetDonorType,
       primaryGoal: primaryGoal[0],
       openEndedNotes: openEndedNotes || undefined,
       causeSubTags: causeAreas.includes("civil_liberties") ? causeSubTags : [],
-      annualBudgetCap: annualBudgetCap ? Number(annualBudgetCap) : undefined,
-      budgetPeriod: budgetPeriod || undefined,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Please complete the form.");
@@ -196,25 +196,41 @@ export function OnboardingForm() {
         </Field>
       )}
 
-      <Field label="Geographic focus">
-        <div className="space-y-2">
-          <ChipGroup
-            label="Geographic focus"
-            options={GEOGRAPHY_FOCUS}
-            value={geographyFocus}
-            onChange={setGeographyFocus}
-            multi={false}
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Headquarters</p>
+          <UsCityPicker
+            value={headquarters}
+            onChange={setHeadquarters}
             disabled={submitting}
-          />
-          <Input
-            value={geographyDetail}
-            onChange={(e) => setGeographyDetail(e.target.value)}
-            placeholder="City or region, e.g. “Little Rock, AR” (optional)"
-            disabled={submitting}
-            aria-label="City or region"
+            aria-label="Headquarters"
           />
         </div>
-      </Field>
+
+        <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
+          <Field label="Geographic interests">
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Cities</p>
+                <UsCitiesMultiPicker
+                  value={citiesOfInterest}
+                  onChange={setCitiesOfInterest}
+                  disabled={submitting}
+                  aria-label="Cities"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Regions</p>
+                <RegionMultiPicker
+                  value={regionsOfInterest}
+                  onChange={setRegionsOfInterest}
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+          </Field>
+        </div>
+      </div>
 
       <Field label="Org size" hint="Annual budget.">
         <ChipGroup
@@ -225,29 +241,6 @@ export function OnboardingForm() {
           multi={false}
           disabled={submitting}
         />
-      </Field>
-
-      <Field
-        label="Annual conference budget (optional)"
-        hint="Powers budget-capped annual planning."
-      >
-        <div className="flex gap-2">
-          <Input
-            value={annualBudgetCap}
-            onChange={(e) => setAnnualBudgetCap(e.target.value.replace(/[^0-9]/g, ""))}
-            placeholder="Cap ($)"
-            disabled={submitting}
-            inputMode="numeric"
-            aria-label="Annual budget cap"
-          />
-          <Input
-            value={budgetPeriod}
-            onChange={(e) => setBudgetPeriod(e.target.value)}
-            placeholder='Period (e.g. "2027")'
-            disabled={submitting}
-            aria-label="Budget period"
-          />
-        </div>
       </Field>
 
       <Field label="Current donor mix" hint="Who funds you today?">

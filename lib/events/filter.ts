@@ -18,15 +18,24 @@ const US_STATES: Record<string, string> = {
   "district of columbia": "DC",
 };
 
-/** State codes implied by the profile's freetext geography detail. */
+/** State codes implied by the profile's geography text fields. */
 function profileStateCodes(profile: NonprofitProfile): Set<string> {
   const codes = new Set<string>();
-  const detail = (profile.geographyDetail ?? "").toLowerCase();
-  if (!detail) return codes;
+  const combined = [
+    profile.geographyDetail,
+    profile.headquarters,
+    ...(profile.citiesOfInterest ?? []),
+    ...(profile.regionsOfInterest ?? []),
+    profile.areasOfInterest,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  if (!combined) return codes;
   for (const [name, code] of Object.entries(US_STATES)) {
-    if (detail.includes(name)) codes.add(code);
+    if (combined.includes(name)) codes.add(code);
   }
-  for (const m of detail.toUpperCase().matchAll(/\b([A-Z]{2})\b/g)) {
+  for (const m of combined.toUpperCase().matchAll(/\b([A-Z]{2})\b/g)) {
     if (Object.values(US_STATES).includes(m[1])) codes.add(m[1]);
   }
   return codes;

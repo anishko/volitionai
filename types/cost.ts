@@ -4,6 +4,7 @@ export type CostProvider =
   | "tavily"
   | "firecrawl"
   | "propublica"
+  | "eventbrite"
   | "youtube"
   | "reddit";
 export type PipelineStage =

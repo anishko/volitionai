@@ -6,7 +6,7 @@ export interface Evidence {
   title: string;
   snippet: string;
   publishedAt?: string;
-  source: "tavily";
+  source: "tavily" | "propublica" | "eventbrite";
   query: string;
 }
 

@@ -168,6 +168,81 @@ export interface EventPlan {
   updatedAt: string;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 2 matching pipeline (docs/NONPROFIT_EVENTS_PRD.md → "Event matching
+// pipeline"). ADDITIVE ONLY: new types layered over the existing Event/
+// EventMatch/NonprofitProfile contracts above — none of those are edited. The
+// v3 follow-up migration (20260707000700) added cause_sub_tags + certificates
+// to events; because the base Event interface is frozen, EventWithRoi carries
+// those fields as an additive companion the matcher consumes.
+// ---------------------------------------------------------------------------
+
+/** The profile shape the matcher consumes. The frozen NonprofitProfile above
+ *  predates the v3 migration (20260707000700) that added cause_sub_tags +
+ *  budget cap; rather than edit it, the matcher takes this additive companion.
+ *  A single adapter (nonprofit/profile-row) maps a DB row into this shape;
+ *  until wired, scripts pass a hardcoded TEST_PROFILE. */
+export interface NonprofitProfileForMatch extends NonprofitProfile {
+  causeSubTags: string[];        // civil-liberties sub-taxonomy; matcher filters on these when present
+  annualBudgetCap?: number;      // signals budget sensitivity → virtual events first-class
+  budgetPeriod?: string;         // e.g. "2027"
+}
+
+/** A certificate / CE credit an event offers — {type, sourceUrl}: citation or
+ *  no badge. Mirrors events.certificates_offered (migration 20260707000700). */
+export interface CertificateOffered {
+  type: string;
+  sourceUrl: string;
+}
+
+/** Event plus the v3 ROI + sub-taxonomy columns the matcher filters and ranks
+ *  on. Additive companion to Event so the base contract stays frozen. */
+export interface EventWithRoi extends Event {
+  causeSubTags: string[];
+  certificatesOffered: CertificateOffered[];
+}
+
+/** Why a rules/budget decision was made about a candidate — surfaced honestly
+ *  rather than silently applied (e.g. virtual event kept because budget-tight). */
+export type MatchCandidateReason =
+  | "sub_tag_overlap"
+  | "cause_area_overlap"
+  | "geography_match"
+  | "virtual_first_class"
+  | "seed_corpus";
+
+/** A filtered candidate on its way to ranking/explanation — carries the event,
+ *  its similarity score, and the human-honest reasons it survived the filter. */
+export interface EventMatchCandidate {
+  event: EventWithRoi;
+  similarity: number;            // 0-1 cosine vs profile embedding (0 if rank unavailable)
+  reasons: MatchCandidateReason[];
+}
+
+/** Everything a single POST /api/events/match run returns: the validated
+ *  matches, the events they point at, the cost receipt, and honest run meta
+ *  (budget stops, degraded stages, dedupe/validation drops). */
+export interface EventMatchRunMeta {
+  runId: string;
+  queries: string[];
+  candidatesConsidered: number;
+  finalists: number;
+  matchesReturned: number;
+  droppedForNoCitation: number;
+  duplicatesMerged: number;
+  budgetStops: string[];         // e.g. "Tavily budget reached (20 credits)"
+  degraded: string[];            // e.g. "Firecrawl unconfigured — live scrape skipped"
+  notices: string[];
+  cloudModel?: string;
+}
+
+export interface EventMatchRunResult {
+  matches: EventMatch[];
+  events: EventWithRoi[];        // the events referenced by matches (by id)
+  receipt: import("./cost").CostReceipt;
+  meta: EventMatchRunMeta;
+}
+
 export interface IdeaCard {
   id: string;
   lane: IdeaLane;

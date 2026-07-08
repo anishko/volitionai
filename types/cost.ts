@@ -1,4 +1,15 @@
-export type CostProvider = "anthropic" | "ollama" | "tavily" | "firecrawl" | "youtube" | "reddit";
+export type CostProvider =
+  | "anthropic"
+  | "ollama"
+  | "tavily"
+  | "firecrawl"
+  | "youtube"
+  | "reddit"
+  // Nonprofit Events pipeline free sources — metered at usd:0 for honest
+  // per-stage accounting (docs/NONPROFIT_EVENTS_PRD.md → metering rule).
+  | "propublica"
+  | "meetup"
+  | "luma";
 export type PipelineStage =
   | "plan"
   | "extract_profile"

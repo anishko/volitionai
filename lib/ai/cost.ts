@@ -2,7 +2,7 @@
 // orchestrator rolls them into a CostReceipt that the UI prints on the answer.
 // This is the "show you the receipt" pillar — do not remove instrumentation.
 import { PRICES } from "./prices";
-import type { CostEvent, CostReceipt, PipelineStage } from "@/types/cost";
+import type { CostEvent, CostProvider, CostReceipt, PipelineStage } from "@/types/cost";
 
 type AnthropicModel = keyof typeof PRICES.anthropic;
 
@@ -61,6 +61,34 @@ export class CostMeter {
       model: args.model,
       inputTokens: args.inputTokens,
       outputTokens: args.outputTokens,
+      usd: 0,
+      latencyMs: args.latencyMs,
+    });
+  }
+
+  /** Firecrawl page scrape — list price logged per page (honest unit economics). */
+  firecrawl(args: { stage: PipelineStage; pages: number; latencyMs: number }): CostEvent {
+    return this.push({
+      stage: args.stage,
+      provider: "firecrawl",
+      unitCount: args.pages,
+      usd: args.pages * PRICES.firecrawl.perPageUsd,
+      latencyMs: args.latencyMs,
+    });
+  }
+
+  /** Free source (ProPublica 990, Meetup, Luma) — usd:0 but still metered so
+   *  the receipt accounts for every network call, not just the paid ones. */
+  free(args: {
+    stage: PipelineStage;
+    provider: Extract<CostProvider, "propublica" | "meetup" | "luma">;
+    unitCount: number;      // api calls / pages fetched
+    latencyMs: number;
+  }): CostEvent {
+    return this.push({
+      stage: args.stage,
+      provider: args.provider,
+      unitCount: args.unitCount,
       usd: 0,
       latencyMs: args.latencyMs,
     });

@@ -9,6 +9,12 @@
 
 import { lazy, Suspense, useState } from "react";
 import Link from "next/link";
+import {
+  motion,
+  useMotionValue,
+  useMotionTemplate,
+  type Variants,
+} from "framer-motion";
 
 // Green dithering shader (21st.dev-style). Lazy + client-only: it needs WebGL,
 // so it must not run during SSR. Fades in once the chunk loads.
@@ -625,6 +631,76 @@ function BuiltForStrip() {
   );
 }
 
+// Shared motion for the card sections. Interaction is borrowed from a glassy
+// pricing-card reference, but retuned to Volition: warm cream cards (no
+// glass), a faint OLIVE cursor spotlight, and the "paper-settling" ease
+// instead of bouncy springs. Cards reveal in a stagger on scroll, their
+// contents build in after, and each lifts gently on hover.
+const EASE: [number, number, number, number] = [0.22, 0.61, 0.36, 1];
+
+const cardGroup: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } },
+};
+
+const cardItem: Variants = {
+  hidden: { opacity: 0, y: 28, scale: 0.985 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.55,
+      ease: EASE,
+      staggerChildren: 0.07,
+      delayChildren: 0.12,
+    },
+  },
+};
+
+const legoItem: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE } },
+};
+
+function SpotlightCard({
+  className = "",
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+
+  function handleMove(e: React.MouseEvent) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    mx.set(e.clientX - rect.left);
+    my.set(e.clientY - rect.top);
+  }
+
+  return (
+    <motion.div
+      variants={cardItem}
+      onMouseMove={handleMove}
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.25, ease: EASE }}
+      className={`group relative overflow-hidden rounded-2xl border transition-shadow duration-500 hover:shadow-[0_28px_60px_-30px_rgba(44,46,35,0.45)] ${className}`}
+      style={{ borderColor: BORDER, background: SURFACE }}
+    >
+      {/* Cursor-following olive spotlight — faint, fades in on hover */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        style={{
+          background: useMotionTemplate`radial-gradient(440px circle at ${mx}px ${my}px, rgba(115,127,71,0.10), transparent 68%)`,
+        }}
+      />
+      <div className="relative z-10 flex h-full flex-col">{children}</div>
+    </motion.div>
+  );
+}
+
 function Pillars() {
   const pillars = [
     {
@@ -658,31 +734,39 @@ function Pillars() {
         >
           A chatbot gives you plausible. Volition gives you sourced.
         </h2>
-        <div className="mt-12 grid gap-4 md:grid-cols-3">
+        <motion.div
+          className="mt-12 grid gap-4 md:grid-cols-3"
+          variants={cardGroup}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+        >
           {pillars.map((p) => (
-            <div
-              key={p.title}
-              className="rounded-2xl border p-7"
-              style={{ borderColor: BORDER, background: SURFACE }}
-            >
-              <span
+            <SpotlightCard key={p.title} className="p-7">
+              <motion.span
+                variants={legoItem}
                 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]"
                 style={{ color: GOLD }}
               >
                 {p.title}
-              </span>
-              <h3
+              </motion.span>
+              <motion.h3
+                variants={legoItem}
                 className="mt-3 text-xl tracking-tight"
                 style={{ color: INK }}
               >
                 {p.heading}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
+              </motion.h3>
+              <motion.p
+                variants={legoItem}
+                className="mt-2 text-sm leading-relaxed"
+                style={{ color: MUTED }}
+              >
                 {p.body}
-              </p>
-            </div>
+              </motion.p>
+            </SpotlightCard>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -725,30 +809,39 @@ function HowItWorks() {
         >
           From “tell me about your org” to a briefing in under three minutes.
         </h2>
-        <div
-          className="mt-12 grid divide-y overflow-hidden rounded-2xl border md:grid-cols-3 md:divide-x md:divide-y-0"
-          style={{ borderColor: BORDER, background: SURFACE }}
+        <motion.div
+          className="mt-12 grid gap-4 md:grid-cols-3"
+          variants={cardGroup}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
         >
           {steps.map((s) => (
-            <div key={s.k} className="p-8" style={{ borderColor: BORDER }}>
-              <span
-                className="font-mono text-sm font-semibold tabular-nums"
-                style={{ color: GOLD }}
+            <SpotlightCard key={s.k} className="p-8">
+              <motion.span
+                variants={legoItem}
+                className="grid h-9 w-9 place-items-center rounded-full border font-mono text-sm font-semibold tabular-nums"
+                style={{ borderColor: BORDER, color: GOLD, background: BG }}
               >
                 {s.k}
-              </span>
-              <h3
+              </motion.span>
+              <motion.h3
+                variants={legoItem}
                 className="mt-4 text-xl tracking-tight"
                 style={{ color: INK }}
               >
                 {s.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
+              </motion.h3>
+              <motion.p
+                variants={legoItem}
+                className="mt-2 text-sm leading-relaxed"
+                style={{ color: MUTED }}
+              >
                 {s.body}
-              </p>
-            </div>
+              </motion.p>
+            </SpotlightCard>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

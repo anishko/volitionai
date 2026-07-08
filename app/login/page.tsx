@@ -13,19 +13,35 @@ export const metadata = {
   title: "Sign in — Volition",
 };
 
+// Same code-rendered monogram as the landing page: a bold ink "V" with a
+// small white "o" dot on its right stroke. Keeps the mark consistent across
+// the flow (stroke follows the foreground token so it holds in dark mode).
+function Monogram({ size = 28 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      aria-hidden
+      className="shrink-0 text-foreground"
+    >
+      <path
+        d="M6.5 7.5 L16 24.5 L25.5 7.5"
+        stroke="currentColor"
+        strokeWidth={5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="22.6" cy="12.6" r="3.1" fill="#fff" />
+    </svg>
+  );
+}
+
 function Wordmark() {
   return (
     <span className="flex items-center gap-2">
-      <svg width={28} height={28} viewBox="0 0 32 32" fill="none" aria-hidden className="shrink-0">
-        <path
-          d="M6.5 7.5 L16 24.5 L25.5 7.5"
-          stroke="#2c2e23"
-          strokeWidth={5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <circle cx="22.6" cy="12.6" r="3.1" fill="#fff" />
-      </svg>
+      <Monogram />
       <span className="text-[17px] font-semibold tracking-tight text-foreground">
         Volition
       </span>
@@ -65,7 +81,7 @@ export default async function LoginPage({
           </Link>
           <Link
             href="/"
-            className="rounded-[10px] border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-[#ece8da]"
+            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-[#ece8da]"
           >
             Back to home
           </Link>
@@ -79,7 +95,7 @@ export default async function LoginPage({
               Sign in
             </p>
             <h1 className="mt-3 text-4xl tracking-[-0.01em] text-foreground">
-              Welcome back.
+              Welcome.
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               Sign in to build your org profile and get matched to events worth

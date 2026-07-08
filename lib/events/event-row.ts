@@ -25,6 +25,7 @@ export interface EventRow {
   format: Event["format"] | null;
   cause_area_tags: string[];
   is_seed: boolean;
+  is_universal: boolean;
   speakers: Record<string, unknown>[];
   sponsors: Record<string, unknown>[];
   organizer_contacts: Record<string, unknown>[];
@@ -45,6 +46,7 @@ export interface EventMatchRow {
   donor_signal_callout: string | null;
   evidence: Record<string, unknown>[];
   status: EventMatch["status"];
+  match_tier: EventMatch["matchTier"];
   dismissed_reason: string | null;
   created_at: string;
 }
@@ -65,6 +67,7 @@ export function rowToEvent(row: EventRow): Event {
     format: row.format ?? undefined,
     causeAreaTags: row.cause_area_tags ?? [],
     isSeed: row.is_seed,
+    isUniversal: row.is_universal ?? false,
     speakers: (row.speakers ?? []).flatMap((s): EventSpeaker[] => {
       const name = str(s.name);
       const sourceUrl = str(s.source_url);
@@ -189,6 +192,7 @@ export function rowToEventMatch(row: EventMatchRow): EventMatch {
       return claim && sourceUrl ? [{ claim, sourceUrl }] : [];
     }),
     status: row.status,
+    matchTier: row.match_tier ?? "strict",
     dismissedReason: row.dismissed_reason ?? undefined,
     createdAt: row.created_at,
   };

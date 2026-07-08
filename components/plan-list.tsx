@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarClock, ChevronDown, ChevronRight, ExternalLink, Plus } from "lucide-react";
+import { Calendar, CalendarClock, ChevronDown, ChevronRight, ExternalLink, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { calendarSyncEnabled } from "@/lib/auth/google";
 import type { Event, PlanChecklistItem } from "@/types";
 import type { EventPlanFull } from "@/lib/plans/plan-row";
 
@@ -94,6 +95,7 @@ function PlanCard({ initial }: { initial: PlanWithEvent }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newTask, setNewTask] = useState("");
+  const [syncState, setSyncState] = useState<"idle" | "pending" | "done" | "error" | "needs-auth">("idle");
 
   const completed = plan.checklist.filter((c) => c.completed).length;
   const total = plan.checklist.length;
@@ -131,6 +133,28 @@ function PlanCard({ initial }: { initial: PlanWithEvent }) {
     persist([...plan.checklist, { task, completed: false }]);
   }
 
+  async function syncCalendar() {
+    setSyncState("pending");
+    try {
+      const res = await fetch(`/api/plans/${plan.id}/calendar`, { method: "POST" });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (payload.needsCalendarAuth) {
+          setSyncState("needs-auth");
+        } else {
+          setSyncState("error");
+        }
+        return;
+      }
+      if (payload.plan) {
+        setPlan(payload.plan);
+      }
+      setSyncState("done");
+    } catch {
+      setSyncState("error");
+    }
+  }
+
   const title = event?.name ?? "Event (details unavailable)";
   const dateRange = formatDate(event?.startDate);
 
@@ -165,10 +189,38 @@ function PlanCard({ initial }: { initial: PlanWithEvent }) {
               </p>
             </div>
           </button>
-          <Badge variant="secondary" className="shrink-0">
-            {tierLabel(plan.participationTier)}
-          </Badge>
+          <div className="flex shrink-0 items-center gap-2">
+            {calendarSyncEnabled() && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={syncState === "pending"}
+                onClick={syncCalendar}
+              >
+                <Calendar className="size-4" />
+                {syncState === "done"
+                  ? "Synced"
+                  : syncState === "pending"
+                    ? "Syncing..."
+                    : "Sync to Calendar"}
+              </Button>
+            )}
+            <Badge variant="secondary">
+              {tierLabel(plan.participationTier)}
+            </Badge>
+          </div>
         </div>
+        {syncState === "needs-auth" && (
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            Re-authorize Google to enable Calendar sync.
+          </p>
+        )}
+        {syncState === "error" && (
+          <p className="text-xs text-red-700 dark:text-red-400">
+            Calendar sync failed - try again.
+          </p>
+        )}
       </CardHeader>
 
       {open && (

@@ -1,6 +1,5 @@
 // POST /api/nonprofit/profile — save onboarding form, run LOCAL extraction,
 // store profile + cost events. GET — current user's profile.
-import { appendFileSync } from "fs";
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { persistCostEvents } from "@/lib/supabase/costs";
@@ -11,33 +10,6 @@ import { CostMeter, newRunId } from "@/lib/ai/cost";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-const DEBUG_LOG = "/Users/andrewz/WorkSpace/Hackathons/volitionai/.cursor/debug-704b62.log";
-function agentLog(
-  location: string,
-  message: string,
-  data: Record<string, unknown>,
-  hypothesisId: string,
-) {
-  const entry = JSON.stringify({
-    sessionId: "704b62",
-    location,
-    message,
-    data,
-    timestamp: Date.now(),
-    hypothesisId,
-  });
-  try {
-    appendFileSync(DEBUG_LOG, `${entry}\n`);
-  } catch {
-    /* ignore */
-  }
-  fetch("http://127.0.0.1:7298/ingest/d352d076-9445-40a2-832a-00aecfd01dfd", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "704b62" },
-    body: entry,
-  }).catch(() => {});
-}
 
 function isMissingProfileGeographyColumn(error: unknown): boolean {
   const message =
@@ -96,25 +68,11 @@ export async function POST(req: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    // #region agent log
-    agentLog("route.ts:POST:auth", "auth check", { hasUser: !!user, userIdPrefix: user?.id?.slice(0, 8) }, "A");
-    // #endregion
     if (!user) {
       return NextResponse.json({ error: "Not signed in." }, { status: 401 });
     }
 
     const parsed = OnboardingFormSchema.safeParse(await req.json());
-    // #region agent log
-    agentLog(
-      "route.ts:POST:parse",
-      "schema parse",
-      {
-        success: parsed.success,
-        firstIssue: parsed.success ? null : parsed.error.issues[0]?.message,
-      },
-      "B",
-    );
-    // #endregion
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message ?? "Invalid form data." },
@@ -139,17 +97,6 @@ export async function POST(req: NextRequest) {
     // LOCAL extraction ($0; metered cloud fallback if Ollama is unreachable).
     const meter = new CostMeter(newRunId());
     const extracted = await extractNonprofitProfile(meter, form);
-    // #region agent log
-    agentLog(
-      "route.ts:POST:extract",
-      "extraction ok",
-      {
-        hasMissionSummary: !!extracted?.missionSummary,
-        causeKeywordCount: extracted?.causeKeywords?.length ?? 0,
-      },
-      "C",
-    );
-    // #endregion
 
     const baseProfileInsert = {
       user_id: user.id,
@@ -180,20 +127,7 @@ export async function POST(req: NextRequest) {
       .insert(profileInsert)
       .select("*")
       .single();
-    let geogRetry = false;
     if (insertError && isMissingProfileGeographyColumn(insertError)) {
-      geogRetry = true;
-      // #region agent log
-      agentLog(
-        "route.ts:POST:geogRetry",
-        "retrying insert without geography columns",
-        {
-          code: (insertError as { code?: string }).code,
-          message: (insertError as { message?: string }).message,
-        },
-        "D",
-      );
-      // #endregion
       console.warn(
         "[/api/nonprofit/profile POST] profile geography columns are not applied yet; creating profile without geography fields.",
       );
@@ -205,24 +139,6 @@ export async function POST(req: NextRequest) {
       row = retry.data;
       insertError = retry.error;
     }
-    // #region agent log
-    agentLog(
-      "route.ts:POST:insert",
-      "db insert result",
-      {
-        hasRow: !!row,
-        geogRetry,
-        insertError: insertError
-          ? {
-              code: (insertError as { code?: string }).code,
-              message: (insertError as { message?: string }).message,
-              details: (insertError as { details?: string }).details,
-            }
-          : null,
-      },
-      "D",
-    );
-    // #endregion
     if (insertError) throw insertError;
 
     const profile = rowToNonprofitProfile(row as NonprofitProfileRow);
@@ -238,17 +154,6 @@ export async function POST(req: NextRequest) {
       costsPersisted: persisted,
     });
   } catch (err) {
-    // #region agent log
-    agentLog(
-      "route.ts:POST:catch",
-      "handler error",
-      {
-        error: err instanceof Error ? err.message : String(err),
-        name: err instanceof Error ? err.name : "unknown",
-      },
-      "E",
-    );
-    // #endregion
     console.error("[/api/nonprofit/profile POST]", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to save profile." },

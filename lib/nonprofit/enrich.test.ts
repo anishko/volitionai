@@ -8,6 +8,7 @@ import { CostMeter } from "@/lib/ai/cost";
 import { enrichFromWebsite } from "./enrich";
 import { runEnrichment } from "./enrich";
 import type { NonprofitProfile } from "@/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 vi.mock("@/lib/data/tavily", () => ({
   tavilyExtract: vi.fn(),
@@ -83,11 +84,23 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-function fakeAdmin(updateImpl: (payload: unknown) => Promise<{ error: unknown }>) {
-  const update = vi.fn((payload: unknown) => ({
-    eq: async (_c: string, _v: string) => updateImpl(payload),
+// Shape of the payload runEnrichment writes, enough for the assertions below.
+type CapturedWrite = {
+  extracted_profile: Record<string, unknown> & {
+    suggestedEnrichments: {
+      status: string;
+      sourceUrls: unknown[];
+      fields?: unknown;
+      generatedAt: string;
+    };
+  };
+};
+
+function fakeAdmin(updateImpl: (payload: CapturedWrite) => Promise<{ error: unknown }>) {
+  const update = vi.fn((payload: CapturedWrite) => ({
+    eq: async () => updateImpl(payload),
   }));
-  return { from: vi.fn(() => ({ update })), _update: update } as any;
+  return { from: vi.fn(() => ({ update })) } as unknown as SupabaseClient;
 }
 
 function baseProfile(): NonprofitProfile {
@@ -125,30 +138,30 @@ describe("runEnrichment (fail-closed persistence)", () => {
       text: JSON.stringify({ missionLanguage: "We fund water.", programAreas: [], namedSponsors: [], voiceTraits: [] }),
       model: "qwen3:8b", inputTokens: 1, outputTokens: 1, latencyMs: 1,
     });
-    let captured: any;
+    let captured: CapturedWrite | undefined;
     const admin = fakeAdmin(async (payload) => { captured = payload; return { error: null }; });
     await runEnrichment(admin, baseProfile(), "2026-07-08T00:00:00.000Z");
-    expect(captured.extracted_profile.missionSummary).toBe("CONFIRMED");
-    expect(captured.extracted_profile.causeKeywords).toEqual(["water"]);
-    expect(captured.extracted_profile.donorProfile).toBe("d");
-    expect(captured.extracted_profile.geographySummary).toBe("g");
-    expect(captured.extracted_profile.eventSearchHints).toEqual(["h"]);
-    expect(captured.extracted_profile.suggestedEnrichments.status).toBe("ready");
+    expect(captured!.extracted_profile.missionSummary).toBe("CONFIRMED");
+    expect(captured!.extracted_profile.causeKeywords).toEqual(["water"]);
+    expect(captured!.extracted_profile.donorProfile).toBe("d");
+    expect(captured!.extracted_profile.geographySummary).toBe("g");
+    expect(captured!.extracted_profile.eventSearchHints).toEqual(["h"]);
+    expect(captured!.extracted_profile.suggestedEnrichments.status).toBe("ready");
   });
 
   it("writes a fail-closed 'failed' envelope when extraction throws", async () => {
     vi.stubEnv("TAVILY_API_KEY", "k");
     vi.mocked(tavilyExtract).mockRejectedValue(new Error("boom"));
-    let captured: any;
+    let captured: CapturedWrite | undefined;
     const admin = fakeAdmin(async (payload) => { captured = payload; return { error: null }; });
     await runEnrichment(admin, baseProfile(), "2026-07-08T00:00:00.000Z");
-    expect(captured.extracted_profile.suggestedEnrichments).toEqual({
+    expect(captured!.extracted_profile.suggestedEnrichments).toEqual({
       status: "failed",
       sourceUrls: [],
       generatedAt: "2026-07-08T00:00:00.000Z",
     });
-    expect(captured.extracted_profile.suggestedEnrichments.fields).toBeUndefined();
-    expect(captured.extracted_profile.missionSummary).toBe("CONFIRMED");
+    expect(captured!.extracted_profile.suggestedEnrichments.fields).toBeUndefined();
+    expect(captured!.extracted_profile.missionSummary).toBe("CONFIRMED");
   });
 
   it("never throws even when the DB write itself errors", async () => {

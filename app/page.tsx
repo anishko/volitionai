@@ -61,6 +61,7 @@ export default function Home() {
   const [phase, setPhase] = useState(0);
   const [result, setResult] = useState<RunResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [laneFilter, setLaneFilter] = useState<string>("all");
 
   async function loadCached(personaSlug: string) {
     setLoading(true);
@@ -136,6 +137,7 @@ export default function Home() {
     setDescription("");
     setPastContent("");
     setPersona(undefined);
+    setLaneFilter("all");
   }
 
   return (
@@ -220,15 +222,38 @@ export default function Home() {
 
             <div className="grid gap-6 md:grid-cols-[1fr_320px]">
               <div className="order-2 space-y-4 md:order-1">
+                {result.cards.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {["all", ...Array.from(new Set(result.cards.map((c) => c.lane)))].map((lane) => {
+                      const count = lane === "all" ? result.cards.length : result.cards.filter((c) => c.lane === lane).length;
+                      return (
+                        <button
+                          key={lane}
+                          type="button"
+                          onClick={() => setLaneFilter(lane)}
+                          className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors ${
+                            laneFilter === lane
+                              ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                              : "border border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                          }`}
+                        >
+                          {lane} <span className="opacity-60">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 {result.cards.length === 0 && (
                   <div className="rounded-xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
                     No cards survived citation validation for this run. (That is the
                     honest outcome — Volition returns a sourced card or none at all.)
                   </div>
                 )}
-                {result.cards.map((card) => (
-                  <IdeaCardView key={card.id} card={card} profile={result.profile} />
-                ))}
+                {result.cards
+                  .filter((c) => laneFilter === "all" || c.lane === laneFilter)
+                  .map((card) => (
+                    <IdeaCardView key={card.id} card={card} profile={result.profile} />
+                  ))}
               </div>
 
               <div className="order-1 space-y-4 md:order-2">

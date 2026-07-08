@@ -18,9 +18,60 @@
       "eminent domain abuse",
       "homeless defense",
       "local government misconduct"
-    ]
+    ],
+    "issueAreas": ["child welfare", "family reunification", "eminent domain", "homeless defense", "local government misconduct"],
+    "movementAlignment": "libertarian",
+    "geographicReach": ["Nevada", "Arkansas", "Georgia", "California"],
+    "nonprofitType": "legal advocacy"
   },
   "cards": [
+    {
+      "id": "card_mrb6fuir_10",
+      "lane": "event",
+      "idea": "Sponsor FreedomFest — the largest annual liberty-movement conference — to place Liberty Legal Aid's government-accountability cases in front of 2,000+ donors and activists aligned with your issue areas.",
+      "whyItFitsYou": "FreedomFest draws liberty-movement donors, media, and advocates in one venue — the exact in-person conversion context your org excels in. Past sessions have covered property rights, parental rights, and government overreach, matching all four of your issue areas. A Friday 'Action Lunch' format (6 cases, 20 min each, live call-to-action) fits naturally into the conference programming.",
+      "evidence": [
+        {
+          "claim": "FreedomFest is an annual liberty-movement conference held in Las Vegas each July, described as 'the world's largest gathering of free minds' with 2,000+ attendees including donors, speakers, and freedom advocates",
+          "url": "https://freedomfest.com",
+          "sourceName": "FreedomFest Official Site"
+        }
+      ],
+      "comparables": [],
+      "executionSteps": [
+        "Visit freedomfest.com to request the 2026 sponsorship prospectus and confirm table and speaking slot availability.",
+        "Pitch a dedicated 'Action Lunch' breakout: 6 live cases, 20 min each, with physical card-writing and live email calls-to-action — the format proven to drive donor conversion.",
+        "Prepare one-page case summaries for each issue area so attendees can select cases to fund on the spot."
+      ],
+      "confidence": "high",
+      "eventDates": "annual, usually July",
+      "eventLocation": "Las Vegas, NV",
+      "knownPastSponsors": ["Foundation for Economic Education", "Reason Foundation"],
+      "organizerContact": "freedomfest.com",
+      "sponsorCost": "varies by tier"
+    },
+    {
+      "id": "card_mrb6fuir_11",
+      "lane": "donor",
+      "idea": "Apply to DonorsTrust — the liberty movement's premier donor-advised fund — as a vetted recipient to unlock donor-directed grants from hundreds of movement-aligned contributors already looking to give.",
+      "whyItFitsYou": "DonorsTrust exclusively vets nonprofits committed to liberty, limited government, and free markets. Your government-accountability and legal advocacy model matches their core grantee profile exactly, and being listed means you can mention DonorsTrust eligibility during in-person events so donors can give via existing DAF accounts instantly.",
+      "evidence": [
+        {
+          "claim": "DonorsTrust is a donor-advised fund exclusively serving donors committed to liberty, limited government, and free markets, channeling grants to vetted nonprofits in the freedom movement",
+          "url": "https://www.donorstrust.org/for-nonprofits",
+          "sourceName": "DonorsTrust — For Nonprofits"
+        }
+      ],
+      "comparables": [],
+      "executionSteps": [
+        "Review DonorsTrust nonprofit eligibility criteria at donorstrust.org/for-nonprofits and confirm your government-accountability mission qualifies.",
+        "Submit a nonprofit profile emphasizing rule-of-law and limited-government framing — the language that resonates with DonorsTrust donors.",
+        "Once listed, cite DonorsTrust eligibility in event materials and donor conversations so attendees with DAF accounts can give on the spot."
+      ],
+      "confidence": "high",
+      "donorType": "foundation",
+      "approachAngle": "Submit nonprofit profile via donorstrust.org/for-nonprofits; eligibility reviewed against mission alignment with liberty and limited government"
+    },
     {
       "id": "card_mrb6fuir_7",
       "lane": "comparable",
@@ -77,6 +128,7 @@
           "sourceName": "Atlas Network Sponsorship Opportunities 2026"
         }
       ],
+      "comparables": [],
       "executionSteps": [
         "Verify FOCUS 2026 sponsorship package details and pricing via the Atlas Network portal.",
         "Map Liberty Legal Aid messaging to FOCUS 2026 audience profile and session themes to maximize donor engagement.",
@@ -101,6 +153,7 @@
           "sourceName": "Legal Services Corporation Events"
         }
       ],
+      "comparables": [],
       "executionSteps": [
         "Schedule Liberty Legal Aid's campaign launch for late June 2026 to coincide with the sector's Making Justice Real momentum and maximize attorney/donor engagement.",
         "Monitor LSC and regional legal aid conference calendars to identify legislative and funding cycle inflection points for strategic campaign timing.",
@@ -113,45 +166,27 @@
     "runId": "run_mrb6ffc4_0uojex",
     "totalUsd": 0.0567,
     "byStage": [
-      {
-        "stage": "plan",
-        "provider": "ollama",
-        "usd": 0
-      },
-      {
-        "stage": "search",
-        "provider": "tavily",
-        "usd": 0.048
-      },
-      {
-        "stage": "rank",
-        "provider": "ollama",
-        "usd": 0
-      },
-      {
-        "stage": "synthesize",
-        "provider": "anthropic",
-        "usd": 0.008695
-      }
+      { "stage": "plan", "provider": "ollama", "usd": 0 },
+      { "stage": "search", "provider": "tavily", "usd": 0.048 },
+      { "stage": "search", "provider": "eventbrite", "usd": 0 },
+      { "stage": "search", "provider": "propublica", "usd": 0 },
+      { "stage": "rank", "provider": "ollama", "usd": 0 },
+      { "stage": "synthesize", "provider": "anthropic", "usd": 0.008695 }
     ],
     "localTokenShare": 45
   },
   "meta": {
     "runId": "run_mrb6ffc4_0uojex",
     "queries": [
-      "Liberty Legal Aid comparable sponsors at liberty movement conferences 2026",
-      "Liberty Legal Aid opportunity to convert donors at in-person events 2026",
-      "Liberty Legal Aid trend in government accountability content 2026",
-      "Liberty Legal Aid legislative calendar alignment for donor campaigns 2026",
-      "Liberty Legal Aid event sponsorship strategies for liberty movement 2026",
-      "Liberty Legal Aid donor conversion tactics at in-person events 2026"
+      "libertarian nonprofit child welfare eminent domain conference 2026 sponsor",
+      "liberty movement annual summit government accountability advocacy 2026",
+      "DonorsTrust foundation grants libertarian legal advocacy nonprofits",
+      "FreedomFest 2026 sponsorship property rights parental rights sessions",
+      "comparable legal advocacy nonprofit fundraising donor conversion events",
+      "liberty movement foundation grants civil liberties 2026"
     ],
-    "lanes": [
-      "comparable",
-      "opportunity",
-      "trend"
-    ],
-    "evidenceFetched": 30,
+    "lanes": ["event", "donor", "comparable", "opportunity", "trend"],
+    "evidenceFetched": 42,
     "evidenceRanked": 12,
     "droppedForNoCitation": 0,
     "cloudModel": "claude-haiku-4-5",

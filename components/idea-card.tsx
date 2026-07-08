@@ -10,6 +10,8 @@ const LANE_META: Record<IdeaLane, { label: string; className: string }> = {
   opportunity: { label: "Opportunity", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" },
   trend: { label: "Trend", className: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" },
   law: { label: "Law", className: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300" },
+  event: { label: "Event", className: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300" },
+  donor: { label: "Donor", className: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300" },
 };
 
 export function IdeaCardView({
@@ -63,6 +65,35 @@ export function IdeaCardView({
         <span className="font-medium text-zinc-700 dark:text-zinc-200">Why it fits you: </span>
         {card.whyItFitsYou}
       </p>
+
+      {card.lane === "event" && (card.eventDates || card.eventLocation || card.sponsorCost || card.organizerContact || (card.knownPastSponsors && card.knownPastSponsors.length > 0)) && (
+        <div className="rounded-lg bg-orange-50 p-3 dark:bg-orange-950/20">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-400">
+            Event details
+          </p>
+          <dl className="space-y-1 text-sm text-zinc-700 dark:text-zinc-200">
+            {card.eventDates && <div><dt className="inline font-medium">Timing: </dt><dd className="inline">{card.eventDates}</dd></div>}
+            {card.eventLocation && <div><dt className="inline font-medium">Location: </dt><dd className="inline">{card.eventLocation}</dd></div>}
+            {card.sponsorCost && <div><dt className="inline font-medium">Sponsor cost: </dt><dd className="inline">{card.sponsorCost}</dd></div>}
+            {card.organizerContact && <div><dt className="inline font-medium">Contact: </dt><dd className="inline">{card.organizerContact}</dd></div>}
+            {card.knownPastSponsors && card.knownPastSponsors.length > 0 && (
+              <div><dt className="inline font-medium">Past sponsors: </dt><dd className="inline">{card.knownPastSponsors.join(", ")}</dd></div>
+            )}
+          </dl>
+        </div>
+      )}
+
+      {card.lane === "donor" && (card.donorType || card.approachAngle) && (
+        <div className="rounded-lg bg-rose-50 p-3 dark:bg-rose-950/20">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-400">
+            Donor profile
+          </p>
+          <dl className="space-y-1 text-sm text-zinc-700 dark:text-zinc-200">
+            {card.donorType && <div><dt className="inline font-medium">Type: </dt><dd className="inline capitalize">{card.donorType}</dd></div>}
+            {card.approachAngle && <div><dt className="inline font-medium">Approach: </dt><dd className="inline">{card.approachAngle}</dd></div>}
+          </dl>
+        </div>
+      )}
 
       {card.comparables && card.comparables.length > 0 && (
         <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900">

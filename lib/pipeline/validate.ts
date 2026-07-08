@@ -71,6 +71,15 @@ export function validateCards(
       comparables: comparables.length ? comparables : undefined,
       executionSteps: card.executionSteps,
       confidence: card.confidence,
+      // Event-lane extras
+      eventDates: card.eventDates,
+      eventLocation: card.eventLocation,
+      knownPastSponsors: card.knownPastSponsors,
+      organizerContact: card.organizerContact,
+      sponsorCost: card.sponsorCost,
+      // Donor-lane extras
+      donorType: card.donorType,
+      approachAngle: card.approachAngle,
     });
   }
 

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient, supabaseConfigured } from "@/lib/supabase/server";
 import { rowToNonprofitProfile, type NonprofitProfileRow } from "@/lib/nonprofit/profile-row";
@@ -77,7 +78,15 @@ export default async function EventsPage({
               </div>
             )}
           </div>
-          <SignOutButton />
+          <div className="flex shrink-0 items-center gap-3">
+            <Link
+              href="/settings"
+              className="rounded-md border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-white dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            >
+              Settings
+            </Link>
+            <SignOutButton />
+          </div>
         </header>
 
         {notice === "seed-failed" && (

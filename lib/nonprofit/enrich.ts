@@ -165,6 +165,10 @@ export async function runEnrichment(
 ): Promise<void> {
   const generatedAt = now ?? new Date().toISOString();
   const meter = new CostMeter(newRunId());
+  // Base is the extracted_profile captured at insert time, not a fresh read.
+  // Safe because this background task is the sole writer of extracted_profile
+  // after insert (the live-match run writes only match_runs). If another
+  // post-insert writer is ever added, re-read the row here before spreading.
   const base = (profile.extractedProfile ?? {}) as Record<string, unknown>;
 
   let envelope: EnrichmentEnvelope;

@@ -1,19 +1,25 @@
 # Mocked vs Real (judges will ask — keep honest and current)
 
-## Cached demo fallback (real prior output, LEGACY route only)
+## Cached demo fallback (real prior output — both pipelines)
 - The cached fallback serves **real prior pipeline output**, not hand-written
-  content. A successful live run is captured to `fixtures/demo/<persona>.json`
-  (with `CAPTURE_FIXTURE=1`), timestamped, and served — labeled in-UI as
-  "Cached run from <timestamp>" — only via `?cached=1` or `DEMO_FALLBACK=1`.
-  Every card in a fixture went through the same citation validator as a live
-  run (real, fetched URLs). Captured personas: `crestview-trading-club`,
-  `camino-coffee`, `liberty-legal-aid`.
-- **Scope caveat (important):** this cached path is wired ONLY to the legacy
-  idea pipeline (`/` + `/api/ideas`, rendered by `app/page.tsx`). The nonprofit
-  **events** pipeline (`/events`, `/api/events/match`) has **no cached fallback**
-  — a network failure on stage there degrades to seed-corpus matches, not a
-  cached persona. Do not claim cached demo insurance for the events experience
-  until it is wired in.
+  content. A successful live run is captured to a fixture file, timestamped,
+  and served when `DEMO_FALLBACK=1`. Every card went through the same
+  citation validator as a live run (real, fetched URLs).
+
+**Legacy ideas pipeline** (`/` + `/api/ideas`):
+  - Capture: `CAPTURE_FIXTURE=1` on a POST to `/api/ideas`
+  - Serve: `DEMO_FALLBACK=1` env var; also `GET /api/ideas?cached=1&persona=slug`
+  - Fixture files: `fixtures/demo/<persona>.json`
+  - Captured personas: `crestview-trading-club`, `camino-coffee`, `liberty-legal-aid`
+
+**Nonprofit events pipeline** (`/events` + `/api/events/match`):
+  - Capture: `CAPTURE_EVENT_FIXTURE=1` on a POST to `/api/events/match`
+    (runs live, captures result to `fixtures/events/<org-slug>.json`)
+  - Serve: `DEMO_FALLBACK=1` env var; GET and POST both serve the fixture
+    and return `cached: true`. If no fixture exists yet, falls through to live.
+  - Fixture files: `fixtures/events/<slug>.json`
+  - **Captured personas: none yet** — run a live match with `CAPTURE_EVENT_FIXTURE=1`
+    before the demo, then add the static import to `lib/events/fixtures.ts` and redeploy.
 
 ## Structured event APIs (best-effort — honest degradation)
 - **Eventbrite** (`lib/events/sources/eventbrite.ts`, wraps

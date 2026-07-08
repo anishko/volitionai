@@ -7,9 +7,14 @@
 // The product preview is a live HTML mockup behind tabs — no screenshots to
 // go stale.
 
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+
+// Green dithering shader (21st.dev-style). Lazy + client-only: it needs WebGL,
+// so it must not run during SSR. Fades in once the chunk loads.
+const Dithering = lazy(() =>
+  import("@paper-design/shaders-react").then((m) => ({ default: m.Dithering })),
+);
 
 const BG = "#e7e3d7"; // page ground (login --background)
 const INK = "#2c2e23"; // text (--foreground)
@@ -25,22 +30,43 @@ const GOLD = "#8f7d33"; // signal accent (--signal)
 
 /* ────────────────────────── shared bits ────────────────────────── */
 
-function Wordmark({ size = 28 }: { size?: number }) {
+// Code-rendered monogram: a bold ink "V" with a small white "o" dot nested
+// onto its right stroke. No image asset. The dot is white, so it only reads
+// where it overlaps the dark stroke — hence it sits on the stroke, not beside.
+function Monogram({ size = 28 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      aria-hidden
+      className="shrink-0"
+    >
+      <path
+        d="M6.5 7.5 L16 24.5 L25.5 7.5"
+        stroke={INK}
+        strokeWidth={5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="22.6" cy="12.6" r="3.1" fill="#fff" />
+    </svg>
+  );
+}
+
+function Wordmark({ size = 28, showText = true }: { size?: number; showText?: boolean }) {
   return (
     <span className="flex items-center gap-2">
-      <Image
-        src="/volition-logo.png"
-        alt=""
-        width={size}
-        height={size}
-        className="rounded-md"
-      />
-      <span
-        className="text-[17px] font-semibold tracking-tight"
-        style={{ color: INK }}
-      >
-        Volition
-      </span>
+      <Monogram size={size} />
+      {showText && (
+        <span
+          className="text-[17px] font-semibold tracking-tight"
+          style={{ color: INK }}
+        >
+          Volition
+        </span>
+      )}
     </span>
   );
 }
@@ -421,40 +447,54 @@ function Nav() {
     { label: "Why Volition", href: "#why" },
     { label: "Events", href: "/events" },
   ];
+  // Frosted-cream "island" surface shared by the nav pill and the outline
+  // buttons — translucent so the green dithering reads through it, blurred so
+  // whatever scrolls underneath stays legible.
+  const island = {
+    borderColor: "rgba(212,206,189,0.7)",
+    background: "rgba(246,243,236,0.55)",
+  };
   return (
-    <header
-      className="sticky top-0 z-40 border-b backdrop-blur"
-      style={{ borderColor: BORDER, background: "rgba(244,241,233,0.85)" }}
-    >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-        <div className="flex items-center gap-8">
-          <Link href="/" aria-label="Volition home">
-            <Wordmark />
-          </Link>
-          <nav className="hidden items-center gap-1 md:flex">
-            {links.map((l) => (
-              <Link
-                key={l.label}
-                href={l.href}
-                className="rounded-lg px-3 py-2 text-sm transition-colors hover:bg-[#ece8da]"
-                style={{ color: MUTED }}
-              >
-                {l.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="flex items-center gap-2.5">
+    // Transparent, borderless header — the hero + dithering run to the very
+    // top of the page and show through behind it.
+    <header className="sticky top-0 z-40">
+      <div className="mx-auto grid h-20 max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-5 sm:px-8">
+        <Link
+          href="/"
+          aria-label="Volition home"
+          className="justify-self-start"
+        >
+          <Wordmark />
+        </Link>
+
+        {/* Center: the translucent island of nav links */}
+        <nav
+          className="hidden items-center gap-1 rounded-full border px-1.5 py-1 shadow-[0_12px_34px_-18px_rgba(44,46,35,0.55)] backdrop-blur-md md:flex"
+          style={island}
+        >
+          {links.map((l) => (
+            <Link
+              key={l.label}
+              href={l.href}
+              className="rounded-full px-4 py-1.5 text-sm transition-colors hover:bg-[rgba(236,232,218,0.85)]"
+              style={{ color: MUTED }}
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2.5 justify-self-end">
           <Link
             href="/login"
-            className="hidden rounded-[10px] border px-4 py-2 text-sm font-medium transition-colors hover:bg-[#ece8da] sm:block"
-            style={{ borderColor: BORDER, color: INK }}
+            className="hidden rounded-full border px-4 py-2 text-sm font-medium backdrop-blur-md transition-colors hover:bg-[rgba(236,232,218,0.85)] sm:block"
+            style={{ ...island, color: INK }}
           >
             Sign in
           </Link>
           <Link
             href="/login"
-            className="rounded-[10px] px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
+            className="rounded-full px-4 py-2 text-sm font-medium shadow-[0_12px_34px_-18px_rgba(44,46,35,0.55)] transition-opacity hover:opacity-90"
             style={{ background: OLIVE, color: OLIVE_FG }}
           >
             Start for free
@@ -465,9 +505,44 @@ function Nav() {
   );
 }
 
+// Full-bleed green dithering behind the hero. Transparent back + `multiply`
+// blend means only the olive ink lands on the cream (it tints, never darkens
+// to a block), and the radial mask fades it out toward the edges and the
+// product preview below — so it melts into the page rather than sitting on it.
+function HeroDither() {
+  const mask =
+    "radial-gradient(118% 78% at 50% 20%, #000 0%, #000 32%, transparent 74%)";
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute left-1/2 top-[-120px] z-0 h-[860px] w-screen -translate-x-1/2 select-none"
+      style={{
+        opacity: 0.26,
+        mixBlendMode: "multiply",
+        maskImage: mask,
+        WebkitMaskImage: mask,
+      }}
+    >
+      <Suspense fallback={null}>
+        <Dithering
+          className="h-full w-full"
+          colorBack="#00000000"
+          colorFront={OLIVE}
+          shape="warp"
+          type="4x4"
+          size={2}
+          speed={0.3}
+        />
+      </Suspense>
+    </div>
+  );
+}
+
 function Hero() {
   return (
-    <div className="px-5 pt-20 text-center sm:px-8 sm:pt-28">
+    <div className="relative px-5 pt-14 text-center sm:px-8 sm:pt-20">
+      <HeroDither />
+      <div className="relative z-10">
       <Link
         href="/events"
         className="rise inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm transition-colors hover:bg-[#ece8da]"
@@ -479,7 +554,7 @@ function Hero() {
         </span>
       </Link>
       <h1
-        className="rise mx-auto mt-8 max-w-4xl text-5xl leading-[1.06] tracking-[-0.015em] sm:text-7xl"
+        className="rise mx-auto mt-6 max-w-4xl text-5xl leading-[1.06] tracking-[-0.015em] sm:text-7xl"
         style={{ color: INK, animationDelay: "60ms" }}
       >
         The insights team engineered for your mission.
@@ -510,6 +585,7 @@ function Hero() {
         >
           How it works
         </a>
+      </div>
       </div>
     </div>
   );
@@ -738,7 +814,7 @@ function Footer() {
 export function LandingPage({ fontClassName }: { fontClassName?: string }) {
   return (
     <div
-      className={`min-h-screen antialiased ${fontClassName ?? ""}`}
+      className={`min-h-screen overflow-x-hidden antialiased ${fontClassName ?? ""}`}
       style={{ background: BG, color: INK }}
     >
       <Nav />

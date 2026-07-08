@@ -14,6 +14,7 @@
     "@anthropic-ai/sdk": "^0.110.0",
     "@base-ui/react": "^1.6.0",
     "@googlemaps/js-api-loader": "^2.1.1",
+    "@paper-design/shaders-react": "^0.0.77",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.1",
     "class-variance-authority": "^0.7.1",

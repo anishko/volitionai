@@ -71,3 +71,14 @@ create policy "match_runs: owner select"
       where p.id = profile_id and p.user_id = (select auth.uid())
     )
   );
+
+-- Table-level grants (the 001100 rule: grants mirror the RLS policies,
+-- because this database does not inherit default privileges).
+grant select, insert, update, delete on table public.match_runs to service_role;
+grant select on table public.match_runs to authenticated;
+
+-- Backfill the same gap for event_debriefs: 000700 created it with owner
+-- policies, but 001100 never granted it, so every debrief query would hit
+-- 42501. No UI touches it yet, which is why the miss stayed latent.
+grant select, insert, update, delete on table public.event_debriefs to service_role;
+grant select, insert, update, delete on table public.event_debriefs to authenticated;

@@ -70,7 +70,7 @@ export function guessFromSnippet(
     causeAreaTags: [...causeAreaTags],
     locationCity,
     locationState,
-    locationCountry: locationState || geographyFocus === "international" ? "USA" : undefined,
+    locationCountry: locationState ? "USA" : undefined,
     format,
   };
 }

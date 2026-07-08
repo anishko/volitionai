@@ -73,9 +73,8 @@ function geoCompatible(
   states: Set<string>,
   event: Event,
 ): boolean {
-  // A non-international org gains nothing from an in-person event abroad.
+  // All supported orgs are U.S.-based; exclude in-person events held abroad.
   if (
-    profile.geographyFocus !== "international" &&
     event.format === "in_person" &&
     event.locationCountry &&
     event.locationCountry !== "USA"
@@ -214,7 +213,7 @@ export function scoreEvent(
   } else if (localFocus && states.size > 0) {
     score += event.format === "hybrid" ? 12 : 5; // travel required for a local org
   } else {
-    score += 12; // national/international org, or geography unknown
+    score += 12; // national org, or geography unknown
   }
 
   // Timing: sooner (but upcoming) is more actionable.

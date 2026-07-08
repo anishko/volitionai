@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   CAUSE_AREAS,
   CAUSE_SUB_TAGS,
+  GEOGRAPHY_FOCUS,
   ORG_SIZES,
   DONOR_TYPES,
   PRIMARY_GOALS,
@@ -123,6 +124,9 @@ export function OnboardingForm({ mode = "create", initialValues, onSuccess }: Pr
   );
   const [openEndedNotes, setOpenEndedNotes] = useState(initialValues?.openEndedNotes ?? "");
   const [causeSubTags, setCauseSubTags] = useState<string[]>(initialValues?.causeSubTags ?? []);
+  const [geographyFocus, setGeographyFocus] = useState<string[]>(
+    initialValues?.geographyFocus ? [initialValues.geographyFocus] : ["national"],
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,7 +136,7 @@ export function OnboardingForm({ mode = "create", initialValues, onSuccess }: Pr
       orgName,
       website,
       causeAreas,
-      geographyFocus: "national",
+      geographyFocus: geographyFocus[0],
       headquarters: headquarters || undefined,
       citiesOfInterest,
       regionsOfInterest,
@@ -244,6 +248,17 @@ export function OnboardingForm({ mode = "create", initialValues, onSuccess }: Pr
         <div className="border-t border-border pt-4">
           <Field label="Geographic interests">
             <div className="space-y-4">
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Area of focus</p>
+                <ChipGroup
+                  label="Area of focus"
+                  options={GEOGRAPHY_FOCUS}
+                  value={geographyFocus}
+                  onChange={setGeographyFocus}
+                  multi={false}
+                  disabled={submitting}
+                />
+              </div>
               <div className="space-y-1.5">
                 <p className="text-xs font-medium text-muted-foreground">Cities</p>
                 <UsCitiesMultiPicker

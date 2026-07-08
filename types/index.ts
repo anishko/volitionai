@@ -37,7 +37,7 @@ export interface Comparable {
 // citation or no signal.
 // ---------------------------------------------------------------------------
 
-export type GeographyFocus = "local" | "regional" | "national" | "international";
+export type GeographyFocus = "local" | "regional" | "national";
 export type EventFormat = "in_person" | "virtual" | "hybrid";
 export type EventMatchStatus = "recommended" | "saved" | "dismissed";
 

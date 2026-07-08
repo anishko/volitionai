@@ -21,8 +21,7 @@ export const CAUSE_AREAS = [
 export const GEOGRAPHY_FOCUS = [
   { value: "local", label: "Local" },
   { value: "regional", label: "Regional" },
-  { value: "national", label: "National" },
-  { value: "international", label: "International" },
+  { value: "national", label: "National (U.S.)" },
 ] as const;
 
 export const ORG_SIZES = [

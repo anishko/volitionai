@@ -178,6 +178,25 @@ export interface EventPlan {
   updatedAt: string;
 }
 
+// Post-event debrief (Phase 7, v1.5): the "actual" side of planned-vs-actual,
+// one per plan (event_debriefs → event_plans). These are the org's OWN reported
+// numbers, so — unlike the sourced PLANNED figures on EventPlan — they carry no
+// source_url (PRD rule 1 applies only to figures we researched). worth_it +
+// notes predate the actuals columns (see migrations 000700 + debrief_actuals).
+export type DebriefOutcome = "attended" | "skipped";
+
+export interface EventDebrief {
+  id: string;
+  planId: string;
+  worthIt?: number;              // 1-5 self-rating; absent until answered
+  outcome?: DebriefOutcome;      // did the org attend or skip in the end
+  actualSpendUsd?: number;       // actual money spent (user-reported, uncited)
+  leadsGained?: number;          // leads captured at the event
+  contactsGained?: number;       // contacts/connections made
+  notes?: string;                // freeform reflection
+  createdAt: string;
+}
+
 export interface IdeaCard {
   id: string;
   lane: IdeaLane;

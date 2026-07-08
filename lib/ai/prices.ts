@@ -9,6 +9,7 @@ export const PRICES = {
   tavily: { perBasicSearchUsd: 0.008 },     // $0 within free/student tier — meter logs list price with tierFree flag
   firecrawl: { perPageUsd: 0.001 },
   propublica: { perCallUsd: 0 },            // free public API, no key — metered for the audit trail
+  meetup: { perCallUsd: 0 },                // official Meetup API, free — metered for the audit trail
   youtube: { perSearchUsd: 0 },
   reddit: { perCallUsd: 0 },
 } as const;

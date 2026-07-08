@@ -5,6 +5,7 @@ export type CostProvider =
   | "firecrawl"
   | "propublica"
   | "eventbrite"
+  | "meetup"
   | "youtube"
   | "reddit";
 export type PipelineStage =

@@ -110,6 +110,17 @@ export class CostMeter {
     });
   }
 
+  /** Meetup official API — free source, still metered (unit = keyword searches). */
+  meetup(args: { stage: PipelineStage; calls: number; latencyMs: number }): CostEvent {
+    return this.push({
+      stage: args.stage,
+      provider: "meetup",
+      unitCount: args.calls,
+      usd: args.calls * PRICES.meetup.perCallUsd,
+      latencyMs: args.latencyMs,
+    });
+  }
+
   /** Roll all recorded events into the receipt the UI renders. */
   receipt(): CostReceipt {
     const totalUsd = this.events.reduce((s, e) => s + e.usd, 0);

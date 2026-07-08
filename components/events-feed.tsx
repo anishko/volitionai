@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Bookmark,
   CalendarPlus,
+  Check,
   CircleDollarSign,
   Clock,
   MapPin,
@@ -12,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -117,6 +119,23 @@ function EventCard({
   onStatusChange: (id: string, status: MatchActionStatus) => void;
 }) {
   const tiers = tierKinds(item.event);
+  // "Add to Plan" — the one planning entry point on the card (Phase 6). Creates
+  // a plan from this match; POST is idempotent, so a re-add is a no-op.
+  const [addState, setAddState] = useState<"idle" | "pending" | "added" | "error">("idle");
+  async function addToPlan() {
+    setAddState("pending");
+    try {
+      const res = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId: item.id }),
+      });
+      setAddState(res.ok ? "added" : "error");
+    } catch {
+      setAddState("error");
+    }
+  }
+
   const firstDonorSignal = item.event.donorSignals[0];
   const donorSignal =
     item.donorSignalCallout ??
@@ -223,10 +242,23 @@ function EventCard({
           <X />
           Dismiss
         </Button>
-        <Button type="button" variant="outline" disabled title="Planning actions are part of issue 7">
-          <CalendarPlus />
-          Add to Plan
-        </Button>
+        {addState === "added" ? (
+          <Link href="/plan" className={buttonVariants({ variant: "secondary" })}>
+            <Check />
+            Added — view plan
+          </Link>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={addState === "pending"}
+            onClick={addToPlan}
+            title={addState === "error" ? "Could not add — try again" : "Add to Plan"}
+          >
+            <CalendarPlus />
+            {addState === "error" ? "Retry add to plan" : "Add to Plan"}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

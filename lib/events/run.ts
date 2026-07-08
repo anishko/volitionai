@@ -5,13 +5,13 @@
 // Firecrawl is down, seed-corpus matches still come back with a notice.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CostMeter, newRunId } from "@/lib/ai/cost";
-import type { DonorSignal, Event, EventMatch, NonprofitProfile } from "@/types";
+import type { DonorSignal, Event, EventMatch, MatchTier, NonprofitProfile } from "@/types";
 import type { CostEvent, CostReceipt } from "@/types/cost";
 import { planEventQueries } from "./plan";
 import { searchEventCandidates, type EventSearchCandidate } from "./search";
 import { scrapeEventCandidates } from "./scrape";
 import { enrichDonorSignals } from "./enrich";
-import { filterCandidates, scoreEvent } from "./filter";
+import { filterCandidates, scoreEvent, type TieredEvent } from "./filter";
 import { explainMatches } from "./explain";
 import {
   loadEventCorpus,
@@ -37,6 +37,8 @@ export interface EventMatchRunMeta {
   finalists: number;
   donorSignalEvents: number;
   cloudModel: string;
+  /** Loosest relaxation-cascade tier the filter had to reach (ADR-0004). */
+  deepestTier: MatchTier;
   notices: string[];
 }
 
@@ -57,31 +59,31 @@ function domainOf(url: string): string {
 
 function selectFinalists(
   profile: NonprofitProfile,
-  events: Event[],
+  tiered: TieredEvent[],
   liveEventIds: Set<string>,
   signalsByEvent: Map<string, DonorSignal[]>,
-): Event[] {
-  const scored = events
-    .map((event) => ({
-      event,
-      score: scoreEvent(profile, event, signalsByEvent.get(event.id) ?? []),
+): TieredEvent[] {
+  const scored = tiered
+    .map((t) => ({
+      t,
+      score: scoreEvent(profile, t.event, signalsByEvent.get(t.event.id) ?? [], t.matchTier),
     }))
     .sort((a, b) => b.score - a.score);
-  const finalists = scored.slice(0, FINALIST_COUNT).map((f) => f.event);
+  const finalists = scored.slice(0, FINALIST_COUNT).map((f) => f.t);
 
-  const hasLive = finalists.some((event) => liveEventIds.has(event.id));
-  const bestLive = scored.find((f) => liveEventIds.has(f.event.id))?.event;
+  const hasLive = finalists.some((f) => liveEventIds.has(f.event.id));
+  const bestLive = scored.find((f) => liveEventIds.has(f.t.event.id))?.t;
   if (!hasLive && bestLive) {
     finalists[finalists.length === FINALIST_COUNT ? FINALIST_COUNT - 1 : finalists.length] = bestLive;
   }
 
-  const hasSeed = finalists.some((event) => event.isSeed);
-  const bestSeed = scored.find((f) => f.event.isSeed)?.event;
+  const hasSeed = finalists.some((f) => f.event.isSeed);
+  const bestSeed = scored.find((f) => f.t.event.isSeed)?.t;
   if (!hasSeed && bestSeed) {
     finalists[finalists.length === FINALIST_COUNT ? FINALIST_COUNT - 1 : finalists.length] = bestSeed;
   }
 
-  return Array.from(new Map(finalists.map((event) => [event.id, event])).values());
+  return Array.from(new Map(finalists.map((f) => [f.event.id, f])).values());
 }
 
 export async function runEventMatch(
@@ -177,14 +179,19 @@ export async function runEventMatch(
     }
   }
 
-  // 5. FILTER (rules, before any cloud spend).
+  // 5. FILTER (relaxation cascade, before any cloud spend).
   const filtered = filterCandidates(profile, allEvents);
+  if (filtered.relaxed) {
+    notices.push(
+      "Not enough exact matches; results were broadened to related causes or virtual events (labeled by tier).",
+    );
+  }
 
   // Preliminary deterministic score picks the finalists.
   const finalists = selectFinalists(profile, filtered.kept, refreshedIds, signalsByEvent);
 
   if (finalists.length === 0) {
-    notices.push("No events matched this profile's cause areas and geography.");
+    notices.push("No upcoming events matched this profile, even with broadened criteria.");
     return {
       matches: [],
       receipt: meter.receipt(),
@@ -200,14 +207,16 @@ export async function runEventMatch(
         finalists: 0,
         donorSignalEvents: signalsByEvent.size,
         cloudModel: "",
+        deepestTier: filtered.deepestTier,
         notices,
       },
     };
   }
 
   // 6. EXPLAIN (cloud, finalists only).
-  const withSignals = finalists.map((event) => ({
+  const withSignals = finalists.map(({ event, matchTier }) => ({
     event,
+    matchTier,
     donorSignals: [
       ...event.donorSignals,
       ...(signalsByEvent.get(event.id) ?? []).filter(
@@ -225,7 +234,8 @@ export async function runEventMatch(
   // 7. SCORE + STORE.
   const writes = withSignals.map((f, i) => ({
     eventId: f.event.id,
-    matchScore: scoreEvent(profile, f.event, f.donorSignals),
+    matchScore: scoreEvent(profile, f.event, f.donorSignals, f.matchTier),
+    matchTier: f.matchTier,
     whyAttend: explained.explanations[i].whyAttend,
     donorSignalCallout: explained.explanations[i].donorSignalCallout,
     evidence: explained.explanations[i].evidence,
@@ -255,6 +265,7 @@ export async function runEventMatch(
       finalists: finalists.length,
       donorSignalEvents: signalsByEvent.size,
       cloudModel: explained.model,
+      deepestTier: filtered.deepestTier,
       notices,
     },
   };

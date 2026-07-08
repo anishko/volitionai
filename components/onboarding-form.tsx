@@ -23,11 +23,10 @@ import { UsCityPicker, UsCitiesMultiPicker } from "@/components/us-city-picker";
 import { RegionMultiPicker } from "@/components/region-multi-picker";
 
 const CHIP_BASE =
-  "rounded-full border px-3 py-1.5 text-sm transition-colors disabled:opacity-50";
+  "rounded-full border px-3 py-1.5 text-sm transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card";
 const CHIP_OFF =
-  "border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900";
-const CHIP_ON =
-  "border-zinc-900 bg-zinc-900 text-zinc-50 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900";
+  "border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground";
+const CHIP_ON = "border-primary bg-primary text-primary-foreground";
 
 function ChipGroup<V extends string>({
   options,
@@ -86,8 +85,8 @@ function Field({
   return (
     <div className="space-y-2">
       <div>
-        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{label}</p>
-        {hint && <p className="text-xs text-zinc-500 dark:text-zinc-400">{hint}</p>}
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </div>
       {children}
     </div>
@@ -186,7 +185,7 @@ export function OnboardingForm({ mode = "create", initialValues, onSuccess }: Pr
   }
 
   return (
-    <div className="space-y-8 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 sm:p-8">
+    <div className="space-y-8 rounded-2xl border border-border bg-card p-6 shadow-[0_24px_60px_-24px_rgba(44,46,35,0.35)] sm:p-8">
       <Field label="Org name and website">
         <div className="space-y-2">
           <Input
@@ -233,7 +232,7 @@ export function OnboardingForm({ mode = "create", initialValues, onSuccess }: Pr
 
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Headquarters</p>
+          <p className="text-sm font-medium text-foreground">Headquarters</p>
           <UsCityPicker
             value={headquarters}
             onChange={setHeadquarters}
@@ -242,11 +241,11 @@ export function OnboardingForm({ mode = "create", initialValues, onSuccess }: Pr
           />
         </div>
 
-        <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <div className="border-t border-border pt-4">
           <Field label="Geographic interests">
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Cities</p>
+                <p className="text-xs font-medium text-muted-foreground">Cities</p>
                 <UsCitiesMultiPicker
                   value={citiesOfInterest}
                   onChange={setCitiesOfInterest}
@@ -255,7 +254,7 @@ export function OnboardingForm({ mode = "create", initialValues, onSuccess }: Pr
                 />
               </div>
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Regions</p>
+                <p className="text-xs font-medium text-muted-foreground">Regions</p>
                 <RegionMultiPicker
                   value={regionsOfInterest}
                   onChange={setRegionsOfInterest}
@@ -331,11 +330,11 @@ export function OnboardingForm({ mode = "create", initialValues, onSuccess }: Pr
               ? "Save changes"
               : "Build my profile"}
         </Button>
-        <p className="text-center text-xs text-zinc-400">
+        <p className="text-center text-xs text-muted-foreground">
           Profile extraction runs on a local model. Your answers become a
-          structured profile; we don't train on them.
+          structured profile; we don&apos;t train on them.
         </p>
-        {error && <p className="text-center text-sm text-red-600">{error}</p>}
+        {error && <p className="text-center text-sm text-destructive">{error}</p>}
       </div>
     </div>
   );

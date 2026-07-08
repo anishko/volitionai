@@ -13,6 +13,7 @@ import { scrapeEventCandidates } from "./scrape";
 import { enrichDonorSignals } from "./enrich";
 import { filterCandidates, scoreEvent } from "./filter";
 import { explainMatches } from "./explain";
+import { validateEventFields } from "./validate";
 import {
   loadEventCorpus,
   upsertDiscoveredEvents,
@@ -37,6 +38,10 @@ export interface EventMatchRunMeta {
   finalists: number;
   donorSignalEvents: number;
   cloudModel: string;
+  /** Finalists dropped because no evidence claim survived citation validation
+   *  (citation or no signal). A receipt/observability stat — a persistently
+   *  high count points at scraping that needs improvement. */
+  matchesDroppedForNoCitation: number;
   notices: string[];
 }
 
@@ -148,9 +153,13 @@ export async function runEventMatch(
     merged = upserted.merged;
   }
 
-  // Candidate set = corpus + fresh versions of anything just scraped.
+  // Candidate set = corpus + fresh versions of anything just scraped. Every
+  // event is field-validated (citation or no signal) before it can be matched
+  // on or reach the explainer's allow-set — nothing unsourced survives.
   const refreshedIds = new Set(discovered.map((e) => e.id));
-  const allEvents = [...corpus.filter((e) => !refreshedIds.has(e.id)), ...discovered];
+  const allEvents = [...corpus.filter((e) => !refreshedIds.has(e.id)), ...discovered].map(
+    validateEventFields,
+  );
 
   // 4. ENRICH (ProPublica 990) — free API, still metered.
   let signalsByEvent = new Map<string, DonorSignal[]>();
@@ -200,6 +209,7 @@ export async function runEventMatch(
         finalists: 0,
         donorSignalEvents: signalsByEvent.size,
         cloudModel: "",
+        matchesDroppedForNoCitation: 0,
         notices,
       },
     };
@@ -222,14 +232,33 @@ export async function runEventMatch(
     );
   }
 
-  // 7. SCORE + STORE.
-  const writes = withSignals.map((f, i) => ({
-    eventId: f.event.id,
-    matchScore: scoreEvent(profile, f.event, f.donorSignals),
-    whyAttend: explained.explanations[i].whyAttend,
-    donorSignalCallout: explained.explanations[i].donorSignalCallout,
-    evidence: explained.explanations[i].evidence,
-  }));
+  // 7. VALIDATE + SCORE + STORE. Citation or no signal (STRICT): a finalist
+  // whose evidence did not survive validation carries zero sourced claims and
+  // is DROPPED — never written, never padded with a fabricated citation. The
+  // dropped count is surfaced (receipt/observability); the honest empty state
+  // handles a feed that thins out as a result.
+  let matchesDroppedForNoCitation = 0;
+  const writes = withSignals.flatMap((f, i) => {
+    const explanation = explained.explanations[i];
+    if (explanation.evidence.length === 0) {
+      matchesDroppedForNoCitation += 1;
+      return [];
+    }
+    return [
+      {
+        eventId: f.event.id,
+        matchScore: scoreEvent(profile, f.event, f.donorSignals),
+        whyAttend: explanation.whyAttend,
+        donorSignalCallout: explanation.donorSignalCallout,
+        evidence: explanation.evidence,
+      },
+    ];
+  });
+  if (matchesDroppedForNoCitation > 0) {
+    notices.push(
+      `${matchesDroppedForNoCitation} match(es) dropped for having no verifiable citation.`,
+    );
+  }
   const stored = await upsertMatches(admin, profile.id, writes);
 
   const eventById = new Map(withSignals.map((f) => [f.event.id, f.event]));
@@ -255,6 +284,7 @@ export async function runEventMatch(
       finalists: finalists.length,
       donorSignalEvents: signalsByEvent.size,
       cloudModel: explained.model,
+      matchesDroppedForNoCitation,
       notices,
     },
   };

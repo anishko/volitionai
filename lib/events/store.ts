@@ -221,6 +221,10 @@ export async function upsertMatches(
   profileId: string,
   writes: MatchWrite[],
 ) {
+  // created_at doubles as the match's verified_at stamp: the moment its
+  // evidence passed citation validation. Set explicitly (not left to the DB
+  // default) so a re-run re-stamps the verification time.
+  const verifiedAt = new Date().toISOString();
   const rows = writes.map((w) => ({
     profile_id: profileId,
     event_id: w.eventId,
@@ -229,6 +233,7 @@ export async function upsertMatches(
     donor_signal_callout: w.donorSignalCallout ?? null,
     evidence: evidenceToJson(w.evidence),
     status: "recommended" as const,
+    created_at: verifiedAt,
   }));
   const { data, error } = await admin
     .from("event_matches")

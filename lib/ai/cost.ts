@@ -77,6 +77,28 @@ export class CostMeter {
     });
   }
 
+  /** Firecrawl deep-scrape — priced per page from the price table. */
+  firecrawl(args: { stage: PipelineStage; pages: number; latencyMs: number }): CostEvent {
+    return this.push({
+      stage: args.stage,
+      provider: "firecrawl",
+      unitCount: args.pages,
+      usd: args.pages * PRICES.firecrawl.perPageUsd,
+      latencyMs: args.latencyMs,
+    });
+  }
+
+  /** ProPublica Nonprofit Explorer — free API, still metered for the audit trail. */
+  propublica(args: { stage: PipelineStage; calls: number; latencyMs: number }): CostEvent {
+    return this.push({
+      stage: args.stage,
+      provider: "propublica",
+      unitCount: args.calls,
+      usd: args.calls * PRICES.propublica.perCallUsd,
+      latencyMs: args.latencyMs,
+    });
+  }
+
   /** Roll all recorded events into the receipt the UI renders. */
   receipt(): CostReceipt {
     const totalUsd = this.events.reduce((s, e) => s + e.usd, 0);

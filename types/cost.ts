@@ -1,4 +1,11 @@
-export type CostProvider = "anthropic" | "ollama" | "tavily" | "firecrawl" | "youtube" | "reddit";
+export type CostProvider =
+  | "anthropic"
+  | "ollama"
+  | "tavily"
+  | "firecrawl"
+  | "propublica"
+  | "youtube"
+  | "reddit";
 export type PipelineStage =
   | "plan"
   | "extract_profile"

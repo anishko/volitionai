@@ -38,6 +38,7 @@ yarn-error.log*
 
 # supabase (CLI local scratch — not the migrations/seed)
 supabase/.temp/
+supabase/.branches/
 
 # typescript
 *.tsbuildinfo

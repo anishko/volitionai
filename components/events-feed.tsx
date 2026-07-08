@@ -8,6 +8,7 @@ import {
   Clock,
   MapPin,
   Mic2,
+  RefreshCw,
   Ticket,
   X,
 } from "lucide-react";
@@ -24,12 +25,20 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sortEventFeedItems, type EventFeedItem } from "@/lib/events/feed-item";
-import type { EventMatchStatus } from "@/types";
+import type { EventMatchStatus, MatchRun } from "@/types";
 
 interface EventsFeedProps {
   profileId: string;
   initialItems: EventFeedItem[];
+  initialRun: MatchRun | null;
 }
+
+// A run still "active" this long after starting is presumed hung (the server
+// budget is 150s); the feed stops polling and offers a retry instead.
+const RUN_HUNG_AFTER_MS = 4 * 60 * 1000;
+// A finished run older than this is stale; the corpus has likely moved on.
+const RUN_STALE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+const POLL_INTERVAL_MS = 4000;
 
 type MatchActionStatus = Extract<EventMatchStatus, "saved" | "dismissed">;
 
@@ -232,38 +241,82 @@ function EventCard({
   );
 }
 
-export function EventsFeed({ profileId, initialItems }: EventsFeedProps) {
+export function EventsFeed({ profileId, initialItems, initialRun }: EventsFeedProps) {
   const [items, setItems] = useState(() => sortEventFeedItems(initialItems));
   const [activeTab, setActiveTab] = useState<"recommended" | "saved">("recommended");
   const [error, setError] = useState<string | null>(null);
   const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
   const [isMatching, setIsMatching] = useState(false);
+  const [run, setRun] = useState<MatchRun | null>(initialRun);
+  // Wall-clock ticker (render-pure): drives the hung/stale checks. 0 until
+  // mount, so both checks stay conservatively false during SSR/hydration.
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
-    const storageKey = `volition:event-match-started:${profileId}`;
-    if (initialItems.length > 0 || window.localStorage.getItem(storageKey)) return;
+    const tick = () => setNow(Date.now());
+    const first = setTimeout(tick, 0); // async first tick keeps the effect body pure
+    const timer = setInterval(tick, 15_000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, []);
 
-    window.localStorage.setItem(storageKey, new Date().toISOString());
-    void (async () => {
-      setIsMatching(true);
-      setError(null);
+  const runActive = run?.status === "floor_ready" || run?.status === "live_running";
+  const runHung =
+    now > 0 &&
+    runActive &&
+    run != null &&
+    now - new Date(run.startedAt).getTime() > RUN_HUNG_AFTER_MS;
+  const runStale =
+    now > 0 &&
+    run?.status === "done" &&
+    run.finishedAt != null &&
+    now - new Date(run.finishedAt).getTime() > RUN_STALE_AFTER_MS;
+  // Retry is offered whenever there is no live search to wait for: never ran,
+  // failed, hung, or the last success has gone stale.
+  const showRetry = !isMatching && (!run || run.status === "failed" || runHung || runStale);
+
+  // Poll the run state while the background live search works (ADR-0005);
+  // results merge into the feed as the server writes them.
+  useEffect(() => {
+    if (!runActive || runHung) return;
+    const interval = setInterval(async () => {
       try {
-        const res = await fetch("/api/events/match", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profileId }),
-        });
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          setError(payload.error ?? "Event matching failed.");
-          return;
+        const res = await fetch(`/api/events/match?profileId=${encodeURIComponent(profileId)}`);
+        if (!res.ok) return; // transient; keep polling until the hung cutoff
+        const payload = await res.json();
+        if (payload.run) setRun(payload.run);
+        if (Array.isArray(payload.matches) && payload.matches.length > 0) {
+          setItems(sortEventFeedItems(payload.matches));
         }
-        setItems(sortEventFeedItems(payload.matches ?? []));
-      } finally {
-        setIsMatching(false);
+      } catch {
+        // transient network failure; the next tick retries
       }
-    })();
-  }, [initialItems.length, profileId]);
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [runActive, runHung, profileId]);
+
+  async function runMatching() {
+    setIsMatching(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/events/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileId }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (payload.run) setRun(payload.run);
+      if (!res.ok) {
+        setError(payload.error ?? "Event matching failed.");
+        return;
+      }
+      setItems(sortEventFeedItems(payload.matches ?? []));
+    } finally {
+      setIsMatching(false);
+    }
+  }
 
   const recommended = useMemo(
     () => items.filter((item) => item.status === "recommended"),
@@ -300,7 +353,9 @@ export function EventsFeed({ profileId, initialItems }: EventsFeedProps) {
   }
 
   const activeItems = activeTab === "recommended" ? recommended : saved;
-  const showMatchingSkeleton = isMatching && activeTab === "recommended";
+  // The skeleton only stands in when there is nothing to show - a re-run must
+  // never hide the cards the user already has.
+  const showMatchingSkeleton = isMatching && recommended.length === 0 && activeTab === "recommended";
 
   return (
     <Tabs
@@ -313,17 +368,31 @@ export function EventsFeed({ profileId, initialItems }: EventsFeedProps) {
           <TabsTrigger value="recommended">For You ({recommended.length})</TabsTrigger>
           <TabsTrigger value="saved">Saved ({saved.length})</TabsTrigger>
         </TabsList>
-        {isMatching && (
-          <div className="inline-flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-            <Clock className="size-4 animate-pulse" />
-            Matching events
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {isMatching ? (
+            <div className="inline-flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+              <Clock className="size-4 animate-pulse" />
+              Matching events
+            </div>
+          ) : runActive && !runHung ? (
+            <div className="inline-flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+              <RefreshCw className="size-4 animate-spin [animation-duration:2.5s]" />
+              Searching live sources for more events
+            </div>
+          ) : null}
+          {showRetry && (
+            <Button type="button" variant="outline" size="sm" onClick={runMatching}>
+              <RefreshCw />
+              Find more events
+            </Button>
+          )}
+        </div>
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-200">
-          {error}
+      {(error ?? (run?.status === "failed" ? run.error : null) ?? (runHung ? "Live search is taking longer than expected." : null)) && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+          {error ?? (run?.status === "failed" ? run.error : null) ?? "Live search is taking longer than expected."}{" "}
+          {items.length > 0 && "Your matched events below are unaffected."}
         </div>
       )}
 

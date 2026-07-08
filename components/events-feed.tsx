@@ -26,11 +26,50 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sortEventFeedItems, type EventFeedItem } from "@/lib/events/feed-item";
+import { CostReceiptCard } from "@/components/cost-receipt";
 import type { EventMatchStatus } from "@/types";
+import type { CostReceipt } from "@/types/cost";
 
 interface EventsFeedProps {
   profileId: string;
   initialItems: EventFeedItem[];
+  /** Receipt from a server-side match run, when available. The client also sets
+   *  this after running a match this session. */
+  initialReceipt?: CostReceipt;
+}
+
+function fmtUsd(n: number): string {
+  if (n === 0) return "$0.00";
+  return n < 0.01 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`;
+}
+
+/** The trust signature: a subtle per-run cost line that expands to the
+ *  stage-by-stage breakdown, plus any honest "we stopped at budget" notices. */
+function ReceiptFooter({ receipt, notices }: { receipt: CostReceipt; notices: string[] }) {
+  return (
+    <details className="group rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400">
+        <CircleDollarSign className="size-3.5" />
+        <span>
+          This match run: <span className="font-medium text-zinc-700 dark:text-zinc-200">{fmtUsd(receipt.totalUsd)}</span>
+          {" · "}
+          {receipt.localTokenShare}% of tokens local
+        </span>
+        <span className="ml-auto text-zinc-400 group-open:hidden">details</span>
+        <span className="ml-auto hidden text-zinc-400 group-open:inline">hide</span>
+      </summary>
+      <div className="space-y-3 border-t border-zinc-100 p-4 dark:border-zinc-900">
+        <CostReceiptCard receipt={receipt} />
+        {notices.length > 0 && (
+          <ul className="space-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+            {notices.map((n, i) => (
+              <li key={i}>· {n}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </details>
+  );
 }
 
 type MatchActionStatus = Extract<EventMatchStatus, "saved" | "dismissed">;
@@ -264,12 +303,14 @@ function EventCard({
   );
 }
 
-export function EventsFeed({ profileId, initialItems }: EventsFeedProps) {
+export function EventsFeed({ profileId, initialItems, initialReceipt }: EventsFeedProps) {
   const [items, setItems] = useState(() => sortEventFeedItems(initialItems));
   const [activeTab, setActiveTab] = useState<"recommended" | "saved">("recommended");
   const [error, setError] = useState<string | null>(null);
   const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
   const [isMatching, setIsMatching] = useState(false);
+  const [receipt, setReceipt] = useState<CostReceipt | null>(initialReceipt ?? null);
+  const [runNotices, setRunNotices] = useState<string[]>([]);
 
   useEffect(() => {
     const storageKey = `volition:event-match-started:${profileId}`;
@@ -291,6 +332,10 @@ export function EventsFeed({ profileId, initialItems }: EventsFeedProps) {
           return;
         }
         setItems(sortEventFeedItems(payload.matches ?? []));
+        if (payload.receipt) setReceipt(payload.receipt as CostReceipt);
+        // Surface budget stops + honest notices next to the receipt.
+        const notices: string[] = payload.meta?.notices ?? [];
+        setRunNotices(notices);
       } finally {
         setIsMatching(false);
       }
@@ -390,6 +435,8 @@ export function EventsFeed({ profileId, initialItems }: EventsFeedProps) {
           <EmptyState tab="saved" />
         )}
       </TabsContent>
+
+      {receipt && <ReceiptFooter receipt={receipt} notices={runNotices} />}
 
       {activeItems.length > 0 && (
         <p className="text-xs text-zinc-500 dark:text-zinc-500">

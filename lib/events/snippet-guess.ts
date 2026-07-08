@@ -35,14 +35,10 @@ export interface SnippetGuess {
 export function guessFromSnippet(
   title: string,
   snippet: string,
-  profileCauses: string[],
   geographyFocus?: GeographyFocus,
 ): SnippetGuess {
   const text = `${title} ${snippet}`.toLowerCase();
   const causeAreaTags = new Set<string>();
-  for (const cause of profileCauses.filter((c) => c !== "other")) {
-    causeAreaTags.add(cause);
-  }
   for (const [cause, keywords] of Object.entries(CAUSE_KEYWORDS)) {
     if (keywords.some((kw) => text.includes(kw))) causeAreaTags.add(cause);
   }

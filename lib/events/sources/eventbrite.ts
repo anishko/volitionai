@@ -5,6 +5,7 @@
 import { eventbriteSearch, type EventbriteEvent } from "@/lib/data/eventbrite";
 import type { CostMeter } from "@/lib/ai/cost";
 import type { NonprofitProfile } from "@/types";
+import { guessFromSnippet } from "@/lib/events/snippet-guess";
 import {
   EVENTBRITE_MAX_QUERIES_PER_RUN,
   type SourceAdapter,
@@ -14,9 +15,10 @@ import {
 
 function toCandidate(
   ev: EventbriteEvent,
-  causeTags: string[],
+  query: string,
 ): StructuredSourceCandidate | null {
   if (!ev.url) return null;
+  const guess = guessFromSnippet(ev.name, ev.description ?? "" + " " + query);
   return {
     kind: "structured",
     sourceId: "eventbrite",
@@ -27,7 +29,7 @@ function toCandidate(
     locationCity: ev.venueCity,
     locationState: ev.venueState,
     locationCountry: ev.venueCity || ev.venueState ? "USA" : undefined,
-    causeAreaTags: causeTags,
+    causeAreaTags: guess.causeAreaTags,
     organizerUrl: ev.organizerUrl,
     description: ev.description || undefined,
     query: ev.query,
@@ -44,13 +46,12 @@ export const eventbriteAdapter: SourceAdapter = {
   kind: "structured",
 
   async fetch(
-    profile: NonprofitProfile,
+    _profile: NonprofitProfile,
     queries: string[],
     meter: CostMeter,
   ): Promise<SourceFetchOutcome> {
     const notices: string[] = [];
     const candidates: StructuredSourceCandidate[] = [];
-    const causeTags = profile.causeAreas.filter((c) => c !== "other");
 
     if (!process.env.EVENTBRITE_API_KEY) {
       notices.push("Eventbrite not configured (EVENTBRITE_API_KEY); structured search skipped.");
@@ -74,7 +75,7 @@ export const eventbriteAdapter: SourceAdapter = {
         calls += 1;
         const { events } = await eventbriteSearch(query, 5);
         for (const ev of events) {
-          const c = toCandidate(ev, causeTags);
+          const c = toCandidate(ev, query);
           if (c) byUrl.set(c.canonicalUrl.toLowerCase().replace(/\/$/, ""), c);
         }
       } catch (err) {

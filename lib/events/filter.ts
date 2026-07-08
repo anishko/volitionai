@@ -135,8 +135,13 @@ export function filterCandidates(
     cause_broadened: (e) =>
       e.isUniversal || e.causeAreaTags.some((t) => adjacent.has(t)),
     // Hybrid counts: it can be attended virtually, which is the point of
-    // the floor - something the org can actually get to.
-    virtual_floor: (e) => e.format === "virtual" || e.format === "hybrid",
+    // the floor - something the org can actually get to. But even at this
+    // last-resort tier we still require cause relevance (or isUniversal) so
+    // unrelated virtual events (e.g. tech conferences in the shared corpus)
+    // never surface for a cause-specific profile.
+    virtual_floor: (e) =>
+      (e.format === "virtual" || e.format === "hybrid") &&
+      (e.isUniversal || !causeFilterActive || causeOk(e)),
   };
 
   // Cumulative relaxation: each tier adds events the earlier tiers missed;

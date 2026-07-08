@@ -4,6 +4,7 @@ import { meetupDiscover } from "@/lib/data/meetup";
 import type { CostMeter } from "@/lib/ai/cost";
 import type { CommunityEvent } from "@/lib/data/community";
 import type { NonprofitProfile } from "@/types";
+import { guessFromSnippet } from "@/lib/events/snippet-guess";
 import {
   MEETUP_MAX_TERMS_PER_RUN,
   type SourceAdapter,
@@ -18,7 +19,8 @@ function meetupTerms(profile: NonprofitProfile, queries: string[]): string[] {
   return base.slice(0, MEETUP_MAX_TERMS_PER_RUN);
 }
 
-function toCandidate(ce: CommunityEvent, causeTags: string[], query: string): StructuredSourceCandidate {
+function toCandidate(ce: CommunityEvent, query: string): StructuredSourceCandidate {
+  const guess = guessFromSnippet(ce.name, query);
   return {
     kind: "structured",
     sourceId: "meetup",
@@ -29,7 +31,7 @@ function toCandidate(ce: CommunityEvent, causeTags: string[], query: string): St
     locationState: ce.locationState,
     locationCountry: ce.locationCountry,
     format: ce.format,
-    causeAreaTags: causeTags,
+    causeAreaTags: guess.causeAreaTags,
     query,
   };
 }
@@ -44,7 +46,6 @@ export const meetupAdapter: SourceAdapter = {
     meter: CostMeter,
   ): Promise<SourceFetchOutcome> {
     const terms = meetupTerms(profile, queries);
-    const causeTags = profile.causeAreas.filter((c) => c !== "other");
 
     if (terms.length === 0) {
       meter.meetup({ stage: "event_search", calls: 0, latencyMs: 0 });
@@ -57,7 +58,7 @@ export const meetupAdapter: SourceAdapter = {
       (profileCauses.length === 0 && queries.length > MEETUP_MAX_TERMS_PER_RUN);
 
     const { events, notices } = await meetupDiscover(meter, terms);
-    const candidates = events.map((ce, i) => toCandidate(ce, causeTags, terms[i] ?? terms[0] ?? ""));
+    const candidates = events.map((ce, i) => toCandidate(ce, terms[i] ?? terms[0] ?? ""));
 
     return { candidates, notices, stoppedAtBudget: stoppedAtBudget || undefined };
   },

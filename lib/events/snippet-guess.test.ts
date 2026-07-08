@@ -2,11 +2,10 @@ import { describe, expect, it } from "vitest";
 import { guessFromSnippet } from "./snippet-guess";
 
 describe("guessFromSnippet", () => {
-  it("tags housing from the snippet and keeps the profile cause", () => {
+  it("tags housing from the snippet keyword", () => {
     const guess = guessFromSnippet(
       "National Housing Forum 2026",
       "A convening for housing advocates in Denver, CO with foundation program officers.",
-      ["housing"],
       "national",
     );
     expect(guess.causeAreaTags).toContain("housing");
@@ -18,10 +17,18 @@ describe("guessFromSnippet", () => {
     const guess = guessFromSnippet(
       "Virtual youth mentoring summit",
       "Join online via Zoom for nonprofit leaders.",
-      ["youth"],
       "national",
     );
     expect(guess.format).toBe("virtual");
     expect(guess.causeAreaTags).toContain("youth");
+  });
+
+  it("does not tag unrelated events with profile causes", () => {
+    const guess = guessFromSnippet(
+      "React Developer Conference 2026",
+      "The best JavaScript conference for frontend engineers.",
+      "national",
+    );
+    expect(guess.causeAreaTags).toHaveLength(0);
   });
 });

@@ -61,7 +61,6 @@ export function eventFromSourceCandidate(
   const guess = guessFromSnippet(
     candidate.title,
     candidate.snippet,
-    profile.causeAreas,
     profile.geographyFocus,
   );
   const identityKey = identityKeyFor({

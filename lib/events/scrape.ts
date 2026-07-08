@@ -84,9 +84,9 @@ Return ONLY JSON matching exactly:
  "sponsors": [{"name": string}],
  "organizerContacts": [{"name": string, "role": string|null, "email": string|null}],
  "participationTiers": [{"tier": string, "cost": string|null, "deadline": string|null, "applyUrl": string|null, "instructions": string|null}]}
-isEvent: true only if this page is about a specific conference, summit, forum, gala, or convening (not a directory, article, or org homepage).
+isEvent: true only if this page is about a specific conference, summit, forum, gala, or convening (not a directory, article, grant listing, or org homepage).
 Dates must be YYYY-MM-DD; use null when the page does not state them. Never guess.
-causeAreaTags: subset of [${CAUSE_VOCAB.join(", ")}] that fit the event's audience; sector-wide fundraising events get every tag that plausibly applies.
+causeAreaTags: subset of [${CAUSE_VOCAB.join(", ")}] — STRICT RULE: only apply a tag if the event is SPECIFICALLY organized for NONPROFIT or CIVIL SOCIETY organizations working in that cause area. Ask yourself: "would a nonprofit focused on [cause] attend this event to advance their mission?" Tech conferences, developer hackathons, AI competitions, and diversity-in-tech events do NOT qualify for any tag even if they touch education or civil topics — they serve the technology industry, not nonprofits. A sector-wide nonprofit fundraising gala may carry multiple tags. An event with no clear nonprofit audience gets [].
 participationTiers: registration / sponsorship / speaker (CFP) opportunities with any stated deadline or cost.
 Extract only what is on the page. Empty arrays are correct when the page lists nothing.`;
 

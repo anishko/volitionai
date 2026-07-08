@@ -158,20 +158,25 @@ describe("filterCandidates (relaxation cascade)", () => {
     expect(tiers.has("Arts Conference")).toBe(false);
   });
 
-  it("falls to the virtual floor when nothing matches by cause", () => {
+  it("falls to the virtual floor only for virtual events with matching causes or isUniversal", () => {
     const profile = makeProfile({ causeAreas: ["arts"] });
     const corpus = [
       makeEvent({ name: "Housing Forum", causeAreaTags: ["housing"] }),
       makeEvent({ name: "Virtual Health Summit", causeAreaTags: ["health"], format: "virtual" }),
       makeEvent({ name: "Hybrid Env Meeting", causeAreaTags: ["environment"], format: "hybrid" }),
+      makeEvent({ name: "Virtual Arts Gala", causeAreaTags: ["arts"], format: "virtual" }),
+      makeEvent({ name: "Virtual Nonprofit Summit", causeAreaTags: [], isUniversal: true, format: "virtual" }),
     ];
     const outcome = filterCandidates(profile, corpus);
 
-    expect(outcome.deepestTier).toBe("virtual_floor");
     const tiers = new Map(outcome.kept.map((k) => [k.event.name, k.matchTier]));
-    expect(tiers.get("Virtual Health Summit")).toBe("virtual_floor");
-    expect(tiers.get("Hybrid Env Meeting")).toBe("virtual_floor");
-    // In-person off-cause events stay out even at the floor.
+    // Arts event matches at strict tier.
+    expect(tiers.get("Virtual Arts Gala")).toBe("strict");
+    // Universal events surface at cause_broadened (isUniversal passes that tier).
+    expect(tiers.get("Virtual Nonprofit Summit")).toBe("cause_broadened");
+    // Unrelated virtual events stay out even at the floor.
+    expect(tiers.has("Virtual Health Summit")).toBe(false);
+    expect(tiers.has("Hybrid Env Meeting")).toBe(false);
     expect(tiers.has("Housing Forum")).toBe(false);
   });
 

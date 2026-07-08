@@ -76,6 +76,11 @@ list stays honest in both directions.
   the profile, but **still not consumed** — no matcher/explain code reads it
   (verified: only the onboarding schema references it). Schema-now / used-later;
   no claim.
+- **Enrichment suggestions stashed under `extracted_profile.suggestedEnrichments`** —
+  no confirmation UI yet, and matching does not read them. Onboarding website
+  enrichment runs in the background and writes structured suggestions the user
+  will later confirm; until that UI ships, the suggestions are persisted but not
+  surfaced. (Same honesty pattern as `event_debriefs` pre-UI.)
 - **Roadmap items not built:** v1.5 Advocacy action drafts (4th outreach type)
   and v2 Donor Q&A Agent. No UI, no routes, no product claims until built.
 

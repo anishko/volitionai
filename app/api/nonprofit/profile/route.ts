@@ -12,6 +12,7 @@ import { extractNonprofitProfile } from "@/lib/nonprofit/extract";
 import { rowToNonprofitProfile, type NonprofitProfileRow } from "@/lib/nonprofit/profile-row";
 import { runSeedFloor } from "@/lib/events/floor";
 import { createMatchRun, runLiveMatchTracked, updateMatchRun } from "@/lib/events/runs";
+import { runEnrichment } from "@/lib/nonprofit/enrich";
 import { CostMeter, newRunId } from "@/lib/ai/cost";
 import type { MatchRun } from "@/types";
 
@@ -193,6 +194,14 @@ export async function POST(req: NextRequest) {
     if (matchRun && matchRun.status !== "failed") {
       const runId = matchRun.id;
       after(() => runLiveMatchTracked(admin, profile, runId));
+    }
+
+    // Website enrichment (background): scrape the org's own site and stash
+    // SUGGESTED profile fields under extracted_profile.suggestedEnrichments.
+    // Never overwrites confirmed answers; matching does not read them (MOCKED.md).
+    // Only runs when a website was provided; runEnrichment never throws.
+    if (profile.website) {
+      after(() => runEnrichment(admin, profile));
     }
 
     return NextResponse.json({

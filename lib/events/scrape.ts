@@ -1,9 +1,13 @@
-// STAGE 3: event page scraping. Firecrawl fetches each candidate page as
-// markdown; a LOCAL model ($0, metered cloud fallback) extracts structured
+// STAGE 3: event page scraping. A scrape provider fetches each candidate page
+// as markdown; a LOCAL model ($0, metered cloud fallback) extracts structured
 // event data. Source URLs are stamped mechanically from the scraped page —
 // the model never invents citations. Hard page cap per PRD budget rules.
+// Provider: Firecrawl preferred-if-configured; Tavily /extract as the fallback
+// (same key the search lane already runs on) so the live lane is never dark;
+// existing skip notice only when neither is configured.
 import { z } from "zod";
 import { firecrawlConfigured, firecrawlScrape } from "@/lib/data/firecrawl";
+import { tavilyExtractConfigured, tavilyExtractScrape } from "@/lib/data/tavily-extract";
 import { ollamaChat } from "@/lib/ai/ollama";
 import { anthropicMessage } from "@/lib/ai/anthropic";
 import { CostMeter } from "@/lib/ai/cost";
@@ -135,18 +139,47 @@ async function extractEvent(
   return ScrapedEventSchema.parse(looseJsonParse(r.text));
 }
 
+/** A deep-scrape provider: fetch one page's markdown and meter it under the
+ *  provider that bills for it. Both fetchers return the same shape. */
+interface ScrapeProvider {
+  fetch(url: string): Promise<{ markdown: string; latencyMs: number }>;
+  meterPage(meter: CostMeter, latencyMs: number): void;
+}
+
+/** Firecrawl preferred-if-configured; Tavily /extract as the fallback so the
+ *  live lane is never dark. null when neither is configured (skip stage). */
+function selectScrapeProvider(): ScrapeProvider | null {
+  if (firecrawlConfigured()) {
+    return {
+      fetch: firecrawlScrape,
+      meterPage: (meter, latencyMs) => meter.firecrawl({ stage: "event_scrape", pages: 1, latencyMs }),
+    };
+  }
+  if (tavilyExtractConfigured()) {
+    return {
+      fetch: tavilyExtractScrape,
+      meterPage: (meter, latencyMs) => meter.tavilyExtract({ stage: "event_scrape", urls: 1, latencyMs }),
+    };
+  }
+  return null;
+}
+
 export async function scrapeEventCandidates(
   meter: CostMeter,
   candidates: EventSearchCandidate[],
   maxPages: number,
 ): Promise<ScrapeOutcome> {
-  if (!firecrawlConfigured()) {
+  const provider = selectScrapeProvider();
+  if (!provider) {
+    // Neither provider configured — record a zero-cost scrape stage for the
+    // audit trail (attributed to Firecrawl, the preferred provider).
     meter.firecrawl({ stage: "event_scrape", pages: 0, latencyMs: 0 });
     return {
       events: [],
       pagesScraped: 0,
       pagesFailed: 0,
-      skippedReason: "Firecrawl not configured; live-discovered events were not deep-scraped.",
+      skippedReason:
+        "No page-scrape provider configured (Firecrawl or Tavily extract); live-discovered events were not deep-scraped.",
       stoppedAtBudget: false,
     };
   }
@@ -167,9 +200,9 @@ export async function scrapeEventCandidates(
     if (pagesScraped >= MAX_FIRECRAWL_PAGES_PER_RUN) break;
     const started = Date.now();
     try {
-      const page = await firecrawlScrape(candidate.url);
+      const page = await provider.fetch(candidate.url);
       pagesScraped += 1;
-      meter.firecrawl({ stage: "event_scrape", pages: 1, latencyMs: page.latencyMs });
+      provider.meterPage(meter, page.latencyMs);
 
       const data = await extractEvent(meter, candidate, page.markdown);
       if (!data.isEvent || data.name.trim().length < 3) continue;

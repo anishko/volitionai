@@ -77,6 +77,19 @@ export class CostMeter {
     });
   }
 
+  /** Tavily /extract deep-scrape (fallback provider) — priced per URL. Attributed
+   *  to provider "tavily" because Tavily bills it; the stage (event_scrape)
+   *  distinguishes it from Tavily search (event_search) on the receipt. */
+  tavilyExtract(args: { stage: PipelineStage; urls: number; latencyMs: number }): CostEvent {
+    return this.push({
+      stage: args.stage,
+      provider: "tavily",
+      unitCount: args.urls,
+      usd: args.urls * PRICES.tavily.perExtractUrlAdvancedUsd,
+      latencyMs: args.latencyMs,
+    });
+  }
+
   /** Firecrawl deep-scrape — priced per page from the price table. */
   firecrawl(args: { stage: PipelineStage; pages: number; latencyMs: number }): CostEvent {
     return this.push({

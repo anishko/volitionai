@@ -8,6 +8,7 @@ import { anthropicMessage } from "@/lib/ai/anthropic";
 import { ollamaChat } from "@/lib/ai/ollama";
 import { CostMeter } from "@/lib/ai/cost";
 import { looseJsonParse, todayStr } from "@/lib/pipeline/schema";
+import { validateEvidence } from "./validate";
 import type { DonorSignal, Event, NonprofitProfile, SourcedClaim } from "@/types";
 
 const ExplanationSchema = z.object({
@@ -146,16 +147,6 @@ function allowedUrls(f: Finalist): Set<string> {
   return urls;
 }
 
-/** Honest mechanical fallback: the event's own site listing it is a citation. */
-function listingEvidence(event: Event): SourcedClaim {
-  const when = event.startDate ? ` starting ${event.startDate}` : "";
-  const where = event.locationCity ? ` in ${event.locationCity}` : "";
-  return {
-    claim: `${event.name}${when}${where} is listed on the event website.`,
-    sourceUrl: event.website,
-  };
-}
-
 export async function explainMatches(
   meter: CostMeter,
   profile: NonprofitProfile,
@@ -205,14 +196,13 @@ export async function explainMatches(
     const raw = byIndex.get(i);
     const urls = allowedUrls(f);
 
-    const evidence: SourcedClaim[] = (raw?.evidence ?? []).flatMap((e) => {
-      if (!urls.has(e.sourceUrl)) {
-        evidenceDroppedForBadUrl += 1;
-        return [];
-      }
-      return [{ claim: e.claim, sourceUrl: e.sourceUrl }];
-    });
-    if (evidence.length === 0) evidence.push(listingEvidence(f.event));
+    // Citation or no signal (CODE): keep only claims whose sourceUrl is in the
+    // event's own sourced data. NO fabricated fallback — a finalist whose
+    // evidence all fails validation is left with zero claims and dropped
+    // downstream in run.ts (never padded with a synthesized citation).
+    const { kept, dropped } = validateEvidence(raw?.evidence ?? [], urls);
+    evidenceDroppedForBadUrl += dropped;
+    const evidence: SourcedClaim[] = kept;
 
     // Callout only where enrichment actually found a foundation (rule 1).
     const donorSignalCallout =

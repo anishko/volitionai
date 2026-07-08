@@ -24,6 +24,28 @@ export async function loadEventCorpus(admin: SupabaseClient): Promise<Event[]> {
   return ((data ?? []) as EventRow[]).map(rowToEvent);
 }
 
+/**
+ * Single event by id for the detail page (issue #6). Pass a user-scoped
+ * client so the "authenticated read" RLS policy applies. Returns null for a
+ * missing row or a malformed id, which the caller renders as a 404.
+ */
+export async function loadEventById(
+  client: SupabaseClient,
+  id: string,
+): Promise<Event | null> {
+  const { data, error } = await client
+    .from("events")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    // 22P02 = invalid uuid text; treat unparseable ids as "not found".
+    if (error.code === "22P02") return null;
+    throw error;
+  }
+  return data ? rowToEvent(data as EventRow) : null;
+}
+
 function normalizedDomain(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "").toLowerCase();

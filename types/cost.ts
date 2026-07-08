@@ -21,7 +21,8 @@ export type PipelineStage =
   | "event_search"
   | "event_scrape"
   | "event_match"
-  | "donor_signal";
+  | "donor_signal"
+  | "website_enrichment";
 
 export interface CostEvent {
   runId: string;

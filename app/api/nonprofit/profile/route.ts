@@ -9,6 +9,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { persistCostEvents } from "@/lib/supabase/costs";
 import { OnboardingFormSchema } from "@/lib/nonprofit/onboarding-schema";
 import { extractNonprofitProfile } from "@/lib/nonprofit/extract";
+import { scrapeWebsiteSummary } from "@/lib/nonprofit/website";
 import { rowToNonprofitProfile, type NonprofitProfileRow } from "@/lib/nonprofit/profile-row";
 import { runSeedFloor } from "@/lib/events/floor";
 import { createMatchRun, runLiveMatchTracked, updateMatchRun } from "@/lib/events/runs";
@@ -103,9 +104,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // LOCAL extraction ($0; metered cloud fallback if Ollama is unreachable).
     const meter = new CostMeter(newRunId());
-    const extracted = await extractNonprofitProfile(meter, form);
+
+    // Scrape homepage + /about to enrich extraction with real website content.
+    // Failures are non-fatal: website enrichment is best-effort.
+    const websiteSummary = form.website
+      ? await scrapeWebsiteSummary(form.website, meter).catch(() => null)
+      : null;
+
+    // LOCAL extraction ($0; metered cloud fallback if Ollama is unreachable).
+    const extracted = await extractNonprofitProfile(meter, form, websiteSummary ?? undefined);
 
     const baseProfileInsert = {
       user_id: user.id,
@@ -122,6 +130,7 @@ export async function POST(req: NextRequest) {
       extracted_profile: extracted,
       cause_sub_tags: form.causeSubTags ?? [],
       qualitative_signals: form.qualitativeSignals ?? null,
+      internal_facts: websiteSummary ? { websiteSummary } : null,
     };
     const profileInsert = {
       ...baseProfileInsert,

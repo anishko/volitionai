@@ -97,6 +97,14 @@ function formatDateRange(startDate?: string, endDate?: string): string {
   return `${start} - ${fmt.format(new Date(`${endDate}T00:00:00Z`))}`;
 }
 
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
 function formatLocation(event: EventFeedItem["event"]): string {
   return [event.locationCity, event.locationState, event.locationCountry]
     .filter(Boolean)
@@ -168,6 +176,17 @@ function EventCard({
   onStatusChange: (id: string, status: MatchActionStatus) => void;
 }) {
   const tiers = tierKinds(item.event);
+
+  const [ogImage, setOgImage] = useState<string | null>(null);
+  useEffect(() => {
+    fetch(`/api/og-image?url=${encodeURIComponent(item.event.website)}`)
+      .then((r) => r.json())
+      .then(({ imageUrl }: { imageUrl: string | null }) => {
+        if (imageUrl) setOgImage(imageUrl);
+      })
+      .catch(() => {});
+  }, [item.event.website]);
+
   // "Add to Plan" — the one planning entry point on the card (Phase 6). Creates
   // a plan from this match; POST is idempotent, so a re-add is a no-op.
   const [addState, setAddState] = useState<"idle" | "pending" | "added" | "error">("idle");
@@ -192,10 +211,20 @@ function EventCard({
       ? `${firstDonorSignal.foundationName} appears in event donor signals${
           firstDonorSignal.focusArea ? ` for ${firstDonorSignal.focusArea}` : ""
         }`
-      : "No verified donor signal available");
+      : null);
 
   return (
-    <Card className="rounded-lg border-zinc-200 shadow-none dark:border-zinc-800">
+    <Card className="overflow-hidden rounded-lg border-zinc-200 shadow-none dark:border-zinc-800">
+      {ogImage && (
+        <div className="h-44 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+          <img
+            src={ogImage}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={() => setOgImage(null)}
+          />
+        </div>
+      )}
       <CardHeader className="gap-3">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -219,19 +248,11 @@ function EventCard({
             })()}
           </div>
           <CardTitle className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">
-            {item.event.name}
+            <Link href={`/events/${item.event.id}`} className="hover:underline">
+              {item.event.name}
+            </Link>
           </CardTitle>
         </div>
-        <CardAction>
-          <div className="rounded-lg border border-zinc-200 px-3 py-2 text-center dark:border-zinc-800">
-            <div className="text-xl font-semibold leading-none text-zinc-950 dark:text-zinc-50">
-              {item.matchScore}
-            </div>
-            <div className="mt-1 text-[0.65rem] font-medium uppercase tracking-wider text-zinc-500">
-              match
-            </div>
-          </div>
-        </CardAction>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -254,10 +275,33 @@ function EventCard({
           {item.whyAttend || "This event matched your profile, but the explanation is still being generated."}
         </p>
 
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300">
-          <span className="font-medium text-zinc-950 dark:text-zinc-100">Donor signal: </span>
-          {donorSignal}
-        </div>
+        {item.evidence.length > 0 && (
+          <div className="space-y-1.5">
+            {item.evidence.slice(0, 3).map((e, i) => (
+              <div key={i} className="flex items-baseline gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="shrink-0 font-mono text-zinc-400 dark:text-zinc-600">[{i + 1}]</span>
+                <span className="min-w-0">
+                  <span className="mr-1.5">{e.claim}</span>
+                  <a
+                    href={e.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    {hostnameOf(e.sourceUrl)}
+                  </a>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {donorSignal && (
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300">
+            <span className="font-medium text-zinc-950 dark:text-zinc-100">Donor signal: </span>
+            {donorSignal}
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
           {tiers.map(({ key, label, icon: Icon, available }) => (
@@ -278,6 +322,14 @@ function EventCard({
       </CardContent>
 
       <CardFooter className="flex flex-wrap justify-end gap-2 bg-zinc-50 dark:bg-zinc-900/60">
+        <a
+          href={item.event.website}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${buttonVariants({ variant: "ghost", size: "sm" })} mr-auto`}
+        >
+          Visit site →
+        </a>
         {item.status === "recommended" ? (
           <Button
             type="button"

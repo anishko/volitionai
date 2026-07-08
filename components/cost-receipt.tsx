@@ -21,6 +21,7 @@ const STAGE_LABEL: Record<PipelineStage, string> = {
   event_scrape: "Event scrape",
   event_match: "Event match",
   donor_signal: "Donor signal",
+  website_enrichment: "Website",
 };
 
 export function CostReceiptCard({

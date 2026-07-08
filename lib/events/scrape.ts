@@ -24,23 +24,23 @@ const isoDate = z
   .nullish()
   .catch(null); // a malformed date degrades to "unknown", never kills the page
 
-const ScrapedEventSchema = z.object({
-  isEvent: z.boolean(),
-  name: z.string().default(""),
+export const ScrapedEventSchema = z.object({
+  isEvent: z.boolean().catch(false),
+  name: z.string().catch(""), // models emit null for non-event pages — degrade, don't fail the page
   startDate: isoDate,
   endDate: isoDate,
   locationCity: z.string().nullish(),
   locationState: z.string().nullish(),
   locationCountry: z.string().nullish(),
   format: z.enum(["in_person", "virtual", "hybrid"]).nullish().catch(null),
-  causeAreaTags: z.array(z.string()).default([]),
+  causeAreaTags: z.array(z.string()).catch([]),
   speakers: z
     .array(z.object({ name: z.string().min(1), title: z.string().nullish(), org: z.string().nullish() }))
-    .default([]),
-  sponsors: z.array(z.object({ name: z.string().min(1) })).default([]),
+    .catch([]),
+  sponsors: z.array(z.object({ name: z.string().min(1) })).catch([]),
   organizerContacts: z
     .array(z.object({ name: z.string().min(1), role: z.string().nullish(), email: z.string().nullish() }))
-    .default([]),
+    .catch([]),
   participationTiers: z
     .array(
       z.object({
@@ -51,7 +51,7 @@ const ScrapedEventSchema = z.object({
         instructions: z.string().nullish(),
       }),
     )
-    .default([]),
+    .catch([]),
 });
 export type ScrapedEventData = z.infer<typeof ScrapedEventSchema>;
 

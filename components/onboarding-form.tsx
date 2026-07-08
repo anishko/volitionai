@@ -138,6 +138,9 @@ export function OnboardingForm() {
         body: JSON.stringify(parsed.data),
       });
       const data = await res.json();
+      // #region agent log
+      fetch('http://127.0.0.1:7298/ingest/d352d076-9445-40a2-832a-00aecfd01dfd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'704b62'},body:JSON.stringify({sessionId:'704b62',location:'onboarding-form.tsx:submit',message:'client response',data:{status:res.status,ok:res.ok,error:data?.error??null},timestamp:Date.now(),hypothesisId:'client'})}).catch(()=>{});
+      // #endregion
       if (res.status === 409) {
         router.push("/events");
         return;

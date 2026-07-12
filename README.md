@@ -41,7 +41,3 @@ Without these, the legacy demo at / keeps working and /login shows a
 CLAUDE.md (context) · docs/ARCHITECTURE.md · docs/DATA_SOURCES.md ·
 docs/COST_AND_AUDIT.md · docs/DIFFERENTIATION.md · docs/DEMO.md
 
-## Working agreement
-Branch per person → PR → gh pr merge N --rebase. Citation or no
-card. Every provider call emits a CostEvent. Mocks labeled in
-MOCKED.md.
